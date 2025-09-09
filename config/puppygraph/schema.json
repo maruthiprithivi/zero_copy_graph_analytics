@@ -1,0 +1,650 @@
+{
+  "description": "Customer 360 Graph Schema for PuppyGraph with ClickHouse Cloud",
+  "version": "1.0.0",
+  "created": "2025-01-01",
+  "catalogs": [
+    {
+      "name": "clickhouse_catalog",
+      "type": "clickhouse",
+      "description": "Connection to ClickHouse Cloud for Customer 360 data",
+      "jdbc": {
+        "url": "jdbc:clickhouse://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/${CLICKHOUSE_DATABASE}?ssl=true&sslmode=strict",
+        "username": "${CLICKHOUSE_USER}",
+        "password": "${CLICKHOUSE_PASSWORD}",
+        "driverClassName": "com.clickhouse.jdbc.ClickHouseDriver",
+        "connectionProperties": {
+          "ssl": "true",
+          "sslmode": "strict",
+          "compress": "true",
+          "decompress": "true",
+          "connection_timeout": "30000",
+          "socket_timeout": "300000",
+          "max_execution_time": "300",
+          "use_server_time_zone": "false",
+          "use_time_zone": "UTC"
+        }
+      },
+      "connectionPool": {
+        "initialSize": 5,
+        "maxActive": 20,
+        "maxIdle": 10,
+        "minIdle": 2,
+        "maxWaitMillis": 30000,
+        "testOnBorrow": true,
+        "testWhileIdle": true,
+        "validationQuery": "SELECT 1"
+      }
+    }
+  ],
+  "graph": {
+    "name": "customer360_graph",
+    "description": "Comprehensive customer 360 graph with relationships and interactions",
+    "vertices": [
+      {
+        "label": "Customer",
+        "description": "Customer entities with profile information and segmentation",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "customers",
+          "metaFields": {
+            "id": "customer_id"
+          }
+        },
+        "properties": {
+          "email": {
+            "column": "email",
+            "type": "STRING",
+            "description": "Customer email address"
+          },
+          "name": {
+            "column": "name", 
+            "type": "STRING",
+            "description": "Customer full name"
+          },
+          "segment": {
+            "column": "segment",
+            "type": "STRING", 
+            "description": "Customer segment (VIP, Premium, Regular, Basic, New)"
+          },
+          "ltv": {
+            "column": "ltv",
+            "type": "DOUBLE",
+            "description": "Customer lifetime value"
+          },
+          "registration_date": {
+            "column": "registration_date",
+            "type": "DATE",
+            "description": "Date when customer registered"
+          },
+          "created_at": {
+            "column": "created_at",
+            "type": "TIMESTAMP",
+            "description": "Record creation timestamp"
+          }
+        },
+        "indexes": [
+          {
+            "name": "customer_email_idx",
+            "columns": ["email"],
+            "unique": true
+          },
+          {
+            "name": "customer_segment_idx", 
+            "columns": ["segment"]
+          }
+        ]
+      },
+      {
+        "label": "Product",
+        "description": "Product catalog with pricing and categorization",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "products",
+          "metaFields": {
+            "id": "product_id"
+          }
+        },
+        "properties": {
+          "name": {
+            "column": "name",
+            "type": "STRING",
+            "description": "Product name"
+          },
+          "category": {
+            "column": "category",
+            "type": "STRING",
+            "description": "Product category"
+          },
+          "subcategory": {
+            "column": "subcategory",
+            "type": "STRING", 
+            "description": "Product subcategory"
+          },
+          "brand": {
+            "column": "brand",
+            "type": "STRING",
+            "description": "Product brand"
+          },
+          "price": {
+            "column": "price",
+            "type": "DOUBLE",
+            "description": "Product price"
+          },
+          "launch_date": {
+            "column": "launch_date",
+            "type": "DATE",
+            "description": "Product launch date"
+          }
+        },
+        "indexes": [
+          {
+            "name": "product_category_idx",
+            "columns": ["category", "subcategory"]
+          },
+          {
+            "name": "product_brand_idx",
+            "columns": ["brand"]
+          }
+        ]
+      },
+      {
+        "label": "Transaction",
+        "description": "Individual transaction records for detailed analysis",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default", 
+          "table": "transactions",
+          "metaFields": {
+            "id": "transaction_id"
+          }
+        },
+        "properties": {
+          "amount": {
+            "column": "amount",
+            "type": "DOUBLE",
+            "description": "Transaction amount"
+          },
+          "quantity": {
+            "column": "quantity",
+            "type": "INTEGER",
+            "description": "Quantity purchased"
+          },
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP", 
+            "description": "Transaction timestamp"
+          },
+          "channel": {
+            "column": "channel",
+            "type": "STRING",
+            "description": "Sales channel (web, mobile, store, etc.)"
+          },
+          "status": {
+            "column": "status",
+            "type": "STRING",
+            "description": "Transaction status (completed, cancelled, refunded)"
+          }
+        },
+        "indexes": [
+          {
+            "name": "transaction_timestamp_idx",
+            "columns": ["timestamp"]
+          },
+          {
+            "name": "transaction_channel_idx",
+            "columns": ["channel"]
+          }
+        ]
+      },
+      {
+        "label": "Interaction",
+        "description": "Customer interaction events (views, clicks, searches)",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "interactions", 
+          "metaFields": {
+            "id": "interaction_id"
+          }
+        },
+        "properties": {
+          "type": {
+            "column": "type",
+            "type": "STRING",
+            "description": "Interaction type (view, click, search, cart_add, wishlist)"
+          },
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "Interaction timestamp"
+          },
+          "duration": {
+            "column": "duration",
+            "type": "INTEGER",
+            "description": "Duration of interaction in seconds"
+          },
+          "device": {
+            "column": "device",
+            "type": "STRING",
+            "description": "Device type (desktop, mobile, tablet)"
+          },
+          "session_id": {
+            "column": "session_id",
+            "type": "STRING",
+            "description": "User session identifier"
+          }
+        },
+        "indexes": [
+          {
+            "name": "interaction_type_idx",
+            "columns": ["type"]
+          },
+          {
+            "name": "interaction_timestamp_idx", 
+            "columns": ["timestamp"]
+          }
+        ]
+      },
+      {
+        "label": "SupportTicket",
+        "description": "Customer support tickets and issues",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "support_tickets",
+          "metaFields": {
+            "id": "ticket_id"
+          }
+        },
+        "properties": {
+          "issue_type": {
+            "column": "issue_type", 
+            "type": "STRING",
+            "description": "Type of support issue"
+          },
+          "priority": {
+            "column": "priority",
+            "type": "STRING",
+            "description": "Ticket priority (low, medium, high, critical)"
+          },
+          "status": {
+            "column": "status",
+            "type": "STRING",
+            "description": "Ticket status (open, in_progress, resolved, closed)"
+          },
+          "created_at": {
+            "column": "created_at",
+            "type": "TIMESTAMP",
+            "description": "Ticket creation time"
+          },
+          "resolved_at": {
+            "column": "resolved_at",
+            "type": "TIMESTAMP",
+            "description": "Ticket resolution time"
+          },
+          "satisfaction_score": {
+            "column": "satisfaction_score",
+            "type": "INTEGER",
+            "description": "Customer satisfaction score (1-5)"
+          }
+        },
+        "indexes": [
+          {
+            "name": "ticket_status_idx",
+            "columns": ["status"]
+          },
+          {
+            "name": "ticket_priority_idx",
+            "columns": ["priority"]
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "label": "PURCHASED",
+        "description": "Customer purchased a product",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "transactions",
+          "metaFields": {
+            "id": "transaction_id",
+            "from": "customer_id",
+            "to": "product_id"
+          },
+          "predicate": "status = 'completed'"
+        },
+        "properties": {
+          "amount": {
+            "column": "amount",
+            "type": "DOUBLE",
+            "description": "Purchase amount"
+          },
+          "quantity": {
+            "column": "quantity", 
+            "type": "INTEGER",
+            "description": "Quantity purchased"
+          },
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "Purchase timestamp"
+          },
+          "channel": {
+            "column": "channel",
+            "type": "STRING",
+            "description": "Purchase channel"
+          }
+        },
+        "indexes": [
+          {
+            "name": "purchased_timestamp_idx",
+            "columns": ["timestamp"]
+          }
+        ]
+      },
+      {
+        "label": "VIEWED",
+        "description": "Customer viewed a product",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "interactions",
+          "metaFields": {
+            "id": "interaction_id",
+            "from": "customer_id", 
+            "to": "product_id"
+          },
+          "predicate": "type = 'view' AND product_id IS NOT NULL"
+        },
+        "properties": {
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "View timestamp"
+          },
+          "duration": {
+            "column": "duration",
+            "type": "INTEGER",
+            "description": "View duration in seconds"
+          },
+          "device": {
+            "column": "device",
+            "type": "STRING",
+            "description": "Device used for viewing"
+          },
+          "session_id": {
+            "column": "session_id",
+            "type": "STRING",
+            "description": "Session identifier"
+          }
+        },
+        "indexes": [
+          {
+            "name": "viewed_timestamp_idx",
+            "columns": ["timestamp"]
+          }
+        ]
+      },
+      {
+        "label": "CLICKED",
+        "description": "Customer clicked on a product",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "interactions",
+          "metaFields": {
+            "id": "interaction_id",
+            "from": "customer_id",
+            "to": "product_id"
+          },
+          "predicate": "type = 'click' AND product_id IS NOT NULL"
+        },
+        "properties": {
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "Click timestamp"
+          },
+          "device": {
+            "column": "device",
+            "type": "STRING",
+            "description": "Device used for clicking"
+          },
+          "session_id": {
+            "column": "session_id",
+            "type": "STRING",
+            "description": "Session identifier"
+          }
+        }
+      },
+      {
+        "label": "ADDED_TO_CART",
+        "description": "Customer added product to cart",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "interactions",
+          "metaFields": {
+            "id": "interaction_id",
+            "from": "customer_id",
+            "to": "product_id"
+          },
+          "predicate": "type = 'cart_add' AND product_id IS NOT NULL"
+        },
+        "properties": {
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "Cart add timestamp"
+          },
+          "device": {
+            "column": "device", 
+            "type": "STRING",
+            "description": "Device used"
+          }
+        }
+      },
+      {
+        "label": "WISHLISTED",
+        "description": "Customer added product to wishlist",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "interactions",
+          "metaFields": {
+            "id": "interaction_id",
+            "from": "customer_id",
+            "to": "product_id"
+          },
+          "predicate": "type = 'wishlist' AND product_id IS NOT NULL"
+        },
+        "properties": {
+          "timestamp": {
+            "column": "timestamp",
+            "type": "TIMESTAMP",
+            "description": "Wishlist add timestamp"
+          }
+        }
+      },
+      {
+        "label": "KNOWS",
+        "description": "Customer relationship (referrals, social connections)",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "customer_relationships",
+          "metaFields": {
+            "id": "CONCAT(from_customer_id, '_', to_customer_id)",
+            "from": "from_customer_id",
+            "to": "to_customer_id"
+          }
+        },
+        "properties": {
+          "relationship_type": {
+            "column": "relationship_type",
+            "type": "STRING",
+            "description": "Type of relationship (friend, family, colleague, referral)"
+          },
+          "since": {
+            "column": "since",
+            "type": "DATE",
+            "description": "Relationship established date"
+          },
+          "strength": {
+            "column": "strength",
+            "type": "DOUBLE",
+            "description": "Relationship strength score (0.0-1.0)"
+          }
+        },
+        "indexes": [
+          {
+            "name": "knows_relationship_type_idx",
+            "columns": ["relationship_type"]
+          }
+        ]
+      },
+      {
+        "label": "SIMILAR_TO",
+        "description": "Computed customer similarity based on behavior",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "customer_similarities",
+          "metaFields": {
+            "id": "CONCAT(customer_id_1, '_', customer_id_2)",
+            "from": "customer_id_1",
+            "to": "customer_id_2"
+          }
+        },
+        "properties": {
+          "similarity_score": {
+            "column": "similarity_score",
+            "type": "DOUBLE",
+            "description": "Similarity score (0.0-1.0)"
+          },
+          "similarity_type": {
+            "column": "similarity_type",
+            "type": "STRING",
+            "description": "Type of similarity (behavioral, demographic, purchase_pattern)"
+          },
+          "computed_at": {
+            "column": "computed_at",
+            "type": "TIMESTAMP",
+            "description": "When similarity was computed"
+          }
+        }
+      },
+      {
+        "label": "RELATED_TO",
+        "description": "Product relationships (frequently bought together, alternatives)",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "product_relationships",
+          "metaFields": {
+            "id": "CONCAT(product_id_1, '_', product_id_2)",
+            "from": "product_id_1",
+            "to": "product_id_2"
+          }
+        },
+        "properties": {
+          "relationship_type": {
+            "column": "relationship_type",
+            "type": "STRING",
+            "description": "Type of relationship (frequently_bought_together, alternative, complement, upgrade)"
+          },
+          "strength": {
+            "column": "strength",
+            "type": "DOUBLE",
+            "description": "Relationship strength score"
+          },
+          "support": {
+            "column": "support",
+            "type": "DOUBLE", 
+            "description": "Statistical support for the relationship"
+          },
+          "confidence": {
+            "column": "confidence",
+            "type": "DOUBLE",
+            "description": "Statistical confidence for the relationship"
+          }
+        }
+      },
+      {
+        "label": "CONTACTED_SUPPORT",
+        "description": "Customer contacted support",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "support_tickets",
+          "metaFields": {
+            "id": "ticket_id",
+            "from": "customer_id",
+            "to": "ticket_id"
+          }
+        },
+        "properties": {
+          "created_at": {
+            "column": "created_at",
+            "type": "TIMESTAMP",
+            "description": "When support was contacted"
+          },
+          "issue_type": {
+            "column": "issue_type",
+            "type": "STRING",
+            "description": "Type of support issue"
+          },
+          "priority": {
+            "column": "priority",
+            "type": "STRING",
+            "description": "Issue priority"
+          }
+        }
+      },
+      {
+        "label": "SUPPORT_FOR_PRODUCT",
+        "description": "Support ticket related to specific product",
+        "mappedTableSource": {
+          "catalog": "clickhouse_catalog",
+          "schema": "default",
+          "table": "support_tickets",
+          "metaFields": {
+            "id": "CONCAT(ticket_id, '_', related_product_id)",
+            "from": "ticket_id", 
+            "to": "related_product_id"
+          },
+          "predicate": "related_product_id IS NOT NULL"
+        },
+        "properties": {
+          "issue_type": {
+            "column": "issue_type",
+            "type": "STRING",
+            "description": "Type of product-related issue"
+          }
+        }
+      }
+    ],
+    "queryOptimization": {
+      "enableIndexHints": true,
+      "enableStatistics": true,
+      "defaultQueryTimeout": 300,
+      "maxResultSize": 1000000,
+      "enableParallelExecution": true,
+      "cacheQueryPlans": true
+    },
+    "monitoring": {
+      "enableQueryMetrics": true,
+      "slowQueryThreshold": 5000,
+      "enablePerformanceLogs": true
+    }
+  },
+  "security": {
+    "enableRowLevelSecurity": false,
+    "enableColumnLevelSecurity": false,
+    "auditLogging": true
+  }
+}

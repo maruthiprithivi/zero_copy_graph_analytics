@@ -1,0 +1,50 @@
+# Customer 360 Demo - Runtime Configuration
+# Fill in your values and use with: terraform apply -var-file="config.tfvars"
+
+#============================================================================
+# REQUIRED VALUES - Fill these in
+#============================================================================
+
+# Your email for resource tagging
+owner_email = ""
+
+# ClickHouse Cloud credentials
+clickhouse_host     = "" # e.g., "abc123.clickhouse.cloud"
+clickhouse_password = "" # Your ClickHouse password
+
+# Your IP address for SSH access (get with: curl ifconfig.me)
+allowed_ssh_ips = [""] # e.g., ["123.45.67.89/32"]
+
+# VPC Configuration - Choose one:
+# Option 1: Use existing VPC (recommended)
+use_existing_vpc   = true
+existing_vpc_id    = "" # e.g., "vpc-123456789"
+existing_subnet_id = "" # e.g., "subnet-123456789"
+
+# Option 2: Create new VPC (set use_existing_vpc = false and uncomment below)
+# use_existing_vpc = false
+# vpc_cidr = "10.0.0.0/16"
+# subnet_cidr = "10.0.1.0/24"
+
+#============================================================================
+# OPTIONAL OVERRIDES - Uncomment and modify if needed
+#============================================================================
+
+# AWS Configuration
+# aws_profile = "default"
+# aws_region = "us-west-2"
+
+# Project Configuration
+# project_prefix = "customer360"
+
+# EC2 Configuration
+# instance_type = "c5.4xlarge""
+# key_pair_name = "customer360-key"
+# root_volume_size = 100
+# root_volume_type = "gp3"
+
+# Data Scale
+# customer_scale = 1000000  # Options: 1000000, 10000000, 100000000
+
+# Network Access
+# allowed_app_ips = ["0.0.0.0/0"]  # Restrict in production
