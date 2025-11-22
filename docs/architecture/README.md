@@ -249,7 +249,7 @@ make generate-hybrid       # Generate data for cloud
 
 **Customer 360 - SQL:**
 ```sql
-SELECT segment, COUNT(*) as customers, AVG(lifetime_value) as avg_ltv
+SELECT segment, COUNT(*) as customers, AVG(ltv) as avg_ltv
 FROM customers GROUP BY segment ORDER BY avg_ltv DESC
 ```
 

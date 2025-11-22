@@ -284,8 +284,8 @@ clickhouse-client --host localhost --port 9000
 SELECT
     segment,
     COUNT(*) as customer_count,
-    AVG(lifetime_value) as avg_ltv,
-    SUM(lifetime_value) as total_ltv
+    AVG(ltv) as avg_ltv,
+    SUM(ltv) as total_ltv
 FROM customers
 GROUP BY segment
 ORDER BY total_ltv DESC;
@@ -295,13 +295,13 @@ ORDER BY total_ltv DESC;
 
 1. **Time Filtering**: Add WHERE clauses for recent data
    ```sql
-   WHERE transaction_date >= today() - INTERVAL 90 DAY
+   WHERE timestamp >= today() - INTERVAL 90 DAY
    ```
 
 2. **Materialized Views**: Create materialized views for frequently-run queries
    ```sql
    CREATE MATERIALIZED VIEW customer_segment_stats AS
-   SELECT segment, COUNT(*) as count, AVG(lifetime_value) as avg_ltv
+   SELECT segment, COUNT(*) as count, AVG(ltv) as avg_ltv
    FROM customers
    GROUP BY segment;
    ```

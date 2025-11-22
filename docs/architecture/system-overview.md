@@ -74,7 +74,7 @@ graph TB
 
 #### Customer360 Schema
 ```
-customers: customer_id, email, name, segment, lifetime_value, registration_date
+customers: customer_id, email, name, segment, ltv, registration_date
 products: product_id, name, category, brand, price, launch_date
 transactions: transaction_id, customer_id, product_id, amount, quantity, timestamp, channel, status
 interactions: interaction_id, customer_id, product_id, type, timestamp, duration, device, session_id
@@ -151,7 +151,7 @@ device_account_usage: device_id, account_id, login_count, failed_attempts
 ```sql
 SELECT
     segment, COUNT(*) as customers,
-    AVG(lifetime_value) as avg_ltv
+    AVG(ltv) as avg_ltv
 FROM customers
 GROUP BY segment
 ```

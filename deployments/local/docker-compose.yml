@@ -21,7 +21,7 @@ services:
       - ./clickhouse/config:/etc/clickhouse-server/conf.d/
       - ../../data:/app/data
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8123/ping"]
       interval: 10s
       timeout: 5s
       retries: 5

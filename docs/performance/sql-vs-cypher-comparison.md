@@ -62,10 +62,10 @@ In our benchmark testing with 36.7M records, SQL queries averaged 10-400ms for a
 SELECT
     segment,
     COUNT(*) as customer_count,
-    AVG(lifetime_value) as avg_ltv,
-    SUM(lifetime_value) as total_ltv,
-    MIN(lifetime_value) as min_ltv,
-    MAX(lifetime_value) as max_ltv
+    AVG(ltv) as avg_ltv,
+    SUM(ltv) as total_ltv,
+    MIN(ltv) as min_ltv,
+    MAX(ltv) as max_ltv
 FROM customers
 GROUP BY segment
 ORDER BY total_ltv DESC;
@@ -81,7 +81,7 @@ ORDER BY total_ltv DESC;
 
 ```sql
 SELECT
-    toYYYYMM(transaction_date) as year_month,
+    toYYYYMM(timestamp) as year_month,
     COUNT(*) as transaction_count,
     SUM(amount) as total_revenue,
     AVG(amount) as avg_transaction_value,
@@ -313,7 +313,7 @@ START: Analyze query requirements
 
 # Step 1: Get customer segment from SQL (fast aggregation)
 segment_data = clickhouse.query("""
-    SELECT segment, lifetime_value
+    SELECT segment, ltv
     FROM customers
     WHERE customer_id = :customer_id
 """)
@@ -353,12 +353,12 @@ final_recs = clickhouse.query("""
    ```sql
    -- Create table with date partitioning
    CREATE TABLE transactions (
-       transaction_date Date,
+       timestamp Date,
        amount Float64,
        ...
    ) ENGINE = MergeTree()
-   PARTITION BY toYYYYMM(transaction_date)
-   ORDER BY (transaction_date, customer_id);
+   PARTITION BY toYYYYMM(timestamp)
+   ORDER BY (timestamp, customer_id);
    ```
 
 3. **Materialized Views:** Pre-compute common aggregations
@@ -369,7 +369,7 @@ final_recs = clickhouse.query("""
    PARTITION BY toYYYYMM(date)
    ORDER BY date
    AS SELECT
-       toDate(transaction_date) as date,
+       toDate(timestamp) as date,
        SUM(amount) as total_revenue,
        COUNT(*) as transaction_count
    FROM transactions
@@ -379,22 +379,22 @@ final_recs = clickhouse.query("""
 4. **Index Optimization:** Use appropriate ORDER BY for common queries
    ```sql
    -- For customer-centric queries
-   ORDER BY (customer_id, transaction_date)
+   ORDER BY (customer_id, timestamp)
 
    -- For time-series analysis
-   ORDER BY (transaction_date, customer_id)
+   ORDER BY (timestamp, customer_id)
    ```
 
 5. **Query Reduction:** Limit data scanned with WHERE clauses
    ```sql
    -- Bad: Scans entire table
    SELECT * FROM transactions
-   ORDER BY transaction_date DESC LIMIT 100;
+   ORDER BY timestamp DESC LIMIT 100;
 
    -- Good: Uses date filter
    SELECT * FROM transactions
-   WHERE transaction_date >= today() - 30
-   ORDER BY transaction_date DESC LIMIT 100;
+   WHERE timestamp >= today() - 30
+   ORDER BY timestamp DESC LIMIT 100;
    ```
 
 ### Cypher Optimization Techniques
@@ -510,7 +510,7 @@ final_recs = clickhouse.query("""
 **After (Hybrid):**
 ```python
 # Fast SQL for customer context
-customer = sql.query("SELECT segment, lifetime_value FROM customers WHERE id = ?")
+customer = sql.query("SELECT segment, ltv FROM customers WHERE id = ?")
 
 # Fast Cypher for recommendations
 recommendations = cypher.query("""

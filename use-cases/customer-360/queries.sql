@@ -9,10 +9,10 @@
 SELECT
     segment,
     COUNT(*) as customer_count,
-    AVG(lifetime_value) as avg_ltv,
-    SUM(lifetime_value) as total_ltv,
-    MIN(lifetime_value) as min_ltv,
-    MAX(lifetime_value) as max_ltv
+    AVG(ltv) as avg_ltv,
+    SUM(ltv) as total_ltv,
+    MIN(ltv) as min_ltv,
+    MAX(ltv) as max_ltv
 FROM customers
 GROUP BY segment
 ORDER BY total_ltv DESC;
@@ -23,10 +23,10 @@ SELECT
     name,
     email,
     segment,
-    lifetime_value,
+    ltv,
     registration_date
 FROM customers
-ORDER BY lifetime_value DESC
+ORDER BY ltv DESC
 LIMIT 20;
 
 -- 3. Customer Registration Trends
@@ -34,7 +34,7 @@ SELECT
     toYYYYMM(registration_date) as year_month,
     segment,
     COUNT(*) as new_customers,
-    AVG(lifetime_value) as avg_ltv
+    AVG(ltv) as avg_ltv
 FROM customers
 GROUP BY year_month, segment
 ORDER BY year_month DESC, segment;
@@ -45,7 +45,7 @@ ORDER BY year_month DESC, segment;
 
 -- 4. Transaction Volume and Revenue by Month
 SELECT
-    toYYYYMM(transaction_date) as year_month,
+    toYYYYMM(timestamp) as year_month,
     COUNT(*) as transaction_count,
     SUM(amount) as total_revenue,
     AVG(amount) as avg_transaction_value,
@@ -62,9 +62,9 @@ SELECT
     COUNT(t.transaction_id) as purchase_count,
     SUM(t.amount) as total_spent,
     AVG(t.amount) as avg_order_value,
-    MIN(t.transaction_date) as first_purchase,
-    MAX(t.transaction_date) as last_purchase,
-    dateDiff('day', MIN(t.transaction_date), MAX(t.transaction_date)) as customer_tenure_days
+    MIN(t.timestamp) as first_purchase,
+    MAX(t.timestamp) as last_purchase,
+    dateDiff('day', MIN(t.timestamp), MAX(t.timestamp)) as customer_tenure_days
 FROM customers c
 LEFT JOIN transactions t ON c.customer_id = t.customer_id
 GROUP BY c.customer_id, c.name, c.segment
@@ -95,12 +95,12 @@ LIMIT 50;
 
 -- 7. Interaction Patterns by Type
 SELECT
-    interaction_type,
+    type,
     COUNT(*) as interaction_count,
     COUNT(DISTINCT customer_id) as unique_customers,
-    AVG(duration_minutes) as avg_duration
+    AVG(duration) as avg_duration
 FROM interactions
-GROUP BY interaction_type
+GROUP BY type
 ORDER BY interaction_count DESC;
 
 -- 8. Customer Engagement Score
@@ -109,10 +109,10 @@ SELECT
     c.name,
     c.segment,
     COUNT(DISTINCT i.interaction_id) as total_interactions,
-    COUNT(DISTINCT CASE WHEN i.interaction_type = 'purchase' THEN i.interaction_id END) as purchases,
-    COUNT(DISTINCT CASE WHEN i.interaction_type = 'view' THEN i.interaction_id END) as views,
-    COUNT(DISTINCT CASE WHEN i.interaction_type = 'support' THEN i.interaction_id END) as support_tickets,
-    AVG(i.duration_minutes) as avg_interaction_duration
+    COUNT(DISTINCT CASE WHEN i.type = 'purchase' THEN i.interaction_id END) as purchases,
+    COUNT(DISTINCT CASE WHEN i.type = 'view' THEN i.interaction_id END) as views,
+    COUNT(DISTINCT CASE WHEN i.type = 'support' THEN i.interaction_id END) as support_tickets,
+    AVG(i.duration) as avg_interaction_duration
 FROM customers c
 LEFT JOIN interactions i ON c.customer_id = i.customer_id
 GROUP BY c.customer_id, c.name, c.segment
@@ -161,13 +161,13 @@ ORDER BY c.segment, revenue DESC;
 WITH cohorts AS (
     SELECT
         customer_id,
-        toYYYYMM(MIN(transaction_date)) as cohort_month
+        toYYYYMM(MIN(timestamp)) as cohort_month
     FROM transactions
     GROUP BY customer_id
 )
 SELECT
     cohorts.cohort_month,
-    toYYYYMM(t.transaction_date) as transaction_month,
+    toYYYYMM(t.timestamp) as transaction_month,
     COUNT(DISTINCT t.customer_id) as active_customers,
     SUM(t.amount) as revenue
 FROM cohorts
@@ -180,15 +180,15 @@ SELECT
     segment,
     quartile,
     COUNT(*) as customer_count,
-    AVG(lifetime_value) as avg_ltv,
-    MIN(lifetime_value) as min_ltv,
-    MAX(lifetime_value) as max_ltv
+    AVG(ltv) as avg_ltv,
+    MIN(ltv) as min_ltv,
+    MAX(ltv) as max_ltv
 FROM (
     SELECT
         customer_id,
         segment,
-        lifetime_value,
-        ntile(4) OVER (PARTITION BY segment ORDER BY lifetime_value) as quartile
+        ltv,
+        ntile(4) OVER (PARTITION BY segment ORDER BY ltv) as quartile
     FROM customers
 )
 GROUP BY segment, quartile
@@ -204,7 +204,7 @@ SELECT DISTINCT
     c.customer_id,
     c.name,
     c.segment,
-    c.lifetime_value,
+    c.ltv,
     'Electronics' as recommended_category
 FROM customers c
 WHERE c.segment IN ('VIP', 'Premium')
@@ -225,7 +225,7 @@ SELECT
 FROM transactions t1
 JOIN transactions t2 ON t1.customer_id = t2.customer_id
     AND t1.transaction_id != t2.transaction_id
-    AND ABS(dateDiff('day', t1.transaction_date, t2.transaction_date)) <= 7
+    AND ABS(dateDiff('day', t1.timestamp, t2.timestamp)) <= 7
 JOIN products p1 ON t1.product_id = p1.product_id
 JOIN products p2 ON t2.product_id = p2.product_id
 WHERE p1.product_id < p2.product_id
@@ -239,8 +239,8 @@ SELECT
     c.customer_id,
     c.name,
     c.segment,
-    MAX(t.transaction_date) as last_purchase_date,
-    dateDiff('day', MAX(t.transaction_date), today()) as days_since_last_purchase,
+    MAX(t.timestamp) as last_purchase_date,
+    dateDiff('day', MAX(t.timestamp), today()) as days_since_last_purchase,
     COUNT(t.transaction_id) as total_purchases,
     SUM(t.amount) as total_spent
 FROM customers c

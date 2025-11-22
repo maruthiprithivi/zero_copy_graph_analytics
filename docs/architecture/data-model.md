@@ -248,7 +248,7 @@ GROUP BY c.customer_id
 - **Description:** Customer has zero or more interactions across products
 - **Query Example:**
 ```sql
-SELECT c.name, COUNT(DISTINCT i.interaction_type) as engagement_types
+SELECT c.name, COUNT(DISTINCT i.type) as engagement_types
 FROM customers c
 LEFT JOIN interactions i ON c.customer_id = i.customer_id
 GROUP BY c.customer_id

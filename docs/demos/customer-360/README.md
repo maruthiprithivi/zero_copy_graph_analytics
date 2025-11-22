@@ -408,7 +408,7 @@ MATCH ()-[r:PURCHASED]->() RETURN count(r);
 
 All queries in the `/docs/demos/customer-360/queries/` directory include commented sections showing how to modify them:
 
-- Add date filters for recent data: `WHERE transaction_date >= today() - INTERVAL 90 DAY`
+- Add date filters for recent data: `WHERE timestamp >= today() - INTERVAL 90 DAY`
 - Change segment filters: `WHERE segment IN ('VIP', 'Premium')`
 - Adjust result limits: `LIMIT 100` → `LIMIT 500`
 - Add additional grouping dimensions: `GROUP BY segment, category`
@@ -422,7 +422,7 @@ SELECT * FROM interactions;
 
 -- Optimized: 50ms
 SELECT * FROM interactions
-WHERE interaction_date >= today() - INTERVAL 30 DAY;
+WHERE timestamp >= today() - INTERVAL 30 DAY;
 ```
 
 2. **Use Sampling for Exploration**: When exploring large datasets, sample first:
@@ -476,7 +476,7 @@ def get_recommendations(customer_id):
 def get_customer_segment(customer_id):
     """Get customer details and segment using SQL"""
     result = ch_client.query(f"""
-        SELECT customer_id, name, email, segment, lifetime_value
+        SELECT customer_id, name, email, segment, ltv
         FROM customers
         WHERE customer_id = '{customer_id}'
     """)
@@ -497,18 +497,18 @@ def export_churn_risks():
     """Daily job: Export at-risk customers for CS team"""
     ch_client = clickhouse_connect.get_client(host='localhost', port=9000)
     result = ch_client.query("""
-        SELECT customer_id, name, email, segment, lifetime_value,
+        SELECT customer_id, name, email, segment, ltv,
                datediff('day', last_purchase_date, today()) as days_since_purchase
         FROM (
-            SELECT c.customer_id, c.name, c.email, c.segment, c.lifetime_value,
-                   MAX(t.transaction_date) as last_purchase_date
+            SELECT c.customer_id, c.name, c.email, c.segment, c.ltv,
+                   MAX(t.timestamp) as last_purchase_date
             FROM customers c
             JOIN transactions t ON c.customer_id = t.customer_id
             WHERE c.segment IN ('VIP', 'Premium')
-            GROUP BY c.customer_id, c.name, c.email, c.segment, c.lifetime_value
+            GROUP BY c.customer_id, c.name, c.email, c.segment, c.ltv
         )
         WHERE days_since_purchase > 180
-        ORDER BY lifetime_value DESC
+        ORDER BY ltv DESC
     """)
 
     # Export to CSV for CS team

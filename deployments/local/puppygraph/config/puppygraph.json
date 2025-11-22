@@ -14,7 +14,229 @@
   "graphs": [
     {
       "name": "customer360_graph",
-      "catalog": "clickhouse_local"
+      "catalog": "clickhouse_local",
+      "vertices": [
+        {
+          "label": "Customer",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "customers",
+            "metaFields": {
+              "id": "customer_id"
+            }
+          }
+        },
+        {
+          "label": "Product",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "products",
+            "metaFields": {
+              "id": "product_id"
+            }
+          }
+        },
+        {
+          "label": "Transaction",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "transactions",
+            "metaFields": {
+              "id": "transaction_id"
+            }
+          }
+        },
+        {
+          "label": "Interaction",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "interactions",
+            "metaFields": {
+              "id": "interaction_id"
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "label": "PURCHASED",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "transactions",
+            "metaFields": {
+              "id": "transaction_id",
+              "from": "customer_id",
+              "to": "product_id"
+            },
+            "predicate": "status = 'completed'"
+          }
+        },
+        {
+          "label": "VIEWED",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "interactions",
+            "metaFields": {
+              "id": "interaction_id",
+              "from": "customer_id",
+              "to": "product_id"
+            },
+            "predicate": "type = 'view' AND product_id IS NOT NULL"
+          }
+        },
+        {
+          "label": "CLICKED",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "interactions",
+            "metaFields": {
+              "id": "interaction_id",
+              "from": "customer_id",
+              "to": "product_id"
+            },
+            "predicate": "type = 'click' AND product_id IS NOT NULL"
+          }
+        },
+        {
+          "label": "ADDED_TO_CART",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "interactions",
+            "metaFields": {
+              "id": "interaction_id",
+              "from": "customer_id",
+              "to": "product_id"
+            },
+            "predicate": "type = 'cart_add' AND product_id IS NOT NULL"
+          }
+        },
+        {
+          "label": "WISHLISTED",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "interactions",
+            "metaFields": {
+              "id": "interaction_id",
+              "from": "customer_id",
+              "to": "product_id"
+            },
+            "predicate": "type = 'wishlist' AND product_id IS NOT NULL"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fraud_graph",
+      "catalog": "clickhouse_local",
+      "vertices": [
+        {
+          "label": "FraudCustomer",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_customers",
+            "metaFields": {
+              "id": "customer_id"
+            }
+          }
+        },
+        {
+          "label": "FraudAccount",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_accounts",
+            "metaFields": {
+              "id": "account_id"
+            }
+          }
+        },
+        {
+          "label": "FraudDevice",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_devices",
+            "metaFields": {
+              "id": "device_id"
+            }
+          }
+        },
+        {
+          "label": "FraudMerchant",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_merchants",
+            "metaFields": {
+              "id": "merchant_id"
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "label": "FRAUD_TRANSACTION",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_transactions",
+            "metaFields": {
+              "id": "transaction_id",
+              "from": "from_account_id",
+              "to": "to_account_id"
+            }
+          }
+        },
+        {
+          "label": "OWNS_ACCOUNT",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "fraud_accounts",
+            "metaFields": {
+              "id": "CONCAT(customer_id, '_owns_', account_id)",
+              "from": "customer_id",
+              "to": "account_id"
+            }
+          }
+        },
+        {
+          "label": "USED_DEVICE",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "device_account_usage",
+            "metaFields": {
+              "id": "CONCAT(account_id, '_used_', device_id)",
+              "from": "account_id",
+              "to": "device_id"
+            }
+          }
+        },
+        {
+          "label": "FRAUD_RELATED",
+          "mappedTableSource": {
+            "catalog": "clickhouse_local",
+            "schema": "default",
+            "table": "account_relationships",
+            "metaFields": {
+              "id": "CONCAT(from_account_id, '_related_', to_account_id)",
+              "from": "from_account_id",
+              "to": "to_account_id"
+            }
+          }
+        }
+      ]
     }
   ]
 }

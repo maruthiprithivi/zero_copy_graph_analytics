@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
@@ -17,8 +18,8 @@ COPY requirements.txt /app/
 COPY generate_data.py /app/
 COPY data.env.example /app/
 
-# Install Python dependencies
-RUN pip3 install --break-system-packages -r /app/requirements.txt
+# Install Python dependencies (without --break-system-packages for compatibility)
+RUN pip3 install -r /app/requirements.txt
 
 # Create data directory
 RUN mkdir -p /app/data

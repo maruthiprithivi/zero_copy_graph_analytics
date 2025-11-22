@@ -178,10 +178,24 @@ make status
 
 Run PuppyGraph locally, connect to ClickHouse Cloud. Data generation runs on your local machine.
 
+**Prerequisites:**
+1. ClickHouse Cloud instance must be running and accessible
+2. Python dependencies installed: `pip install -r requirements.txt`
+3. Network connectivity to ClickHouse Cloud (verify firewall rules)
+
 ```bash
+# Install Python dependencies (if not already installed)
+pip install -r requirements.txt
+
 # Configure ClickHouse Cloud connection
 cp deployments/hybrid/.env.example deployments/hybrid/.env
-# Edit .env with your ClickHouse Cloud credentials
+# Edit .env with your ClickHouse Cloud credentials:
+#   - CLICKHOUSE_HOST: your-instance.clickhouse.cloud
+#   - CLICKHOUSE_PORT: 9440 (secure port)
+#   - CLICKHOUSE_USER: default
+#   - CLICKHOUSE_PASSWORD: your-actual-password
+#   - CLICKHOUSE_DATABASE: default (or your database name)
+#   - CLICKHOUSE_SECURE: true (required for cloud)
 
 # Start PuppyGraph
 make hybrid
@@ -345,12 +359,18 @@ python3 generate_data.py \
 
 ### Data Scales
 
-| Scale      | Customers | Transactions | RAM Required | Use Case               |
-|------------|-----------|--------------|--------------|------------------------|
-| Small      | 100K      | ~1M          | 4GB          | Testing, Development   |
-| Medium     | 1M        | ~10M         | 8GB          | Demos, POCs            |
-| Large      | 10M       | ~100M        | 16GB         | Production-like        |
-| Enterprise | 100M+     | ~1B+         | 32GB+        | Performance testing    |
+| Scale      | Customers | Transactions | Total Records | Generation Time | RAM Required | Disk Space | Use Case               |
+|------------|-----------|--------------|---------------|-----------------|--------------|------------|------------------------|
+| Small      | 100K      | ~1M          | ~1.3M         | 5-10 min        | 4GB          | 2GB        | Testing, Development   |
+| Medium     | 1M        | ~10M         | ~35M          | 30-45 min       | 8GB          | 10GB       | Demos, POCs            |
+| Large      | 10M       | ~100M        | ~350M         | 4-6 hours       | 16GB         | 50GB       | Production-like        |
+| Enterprise | 100M+     | ~1B+         | ~3.5B+        | 1-2 days        | 32GB+        | 500GB+     | Performance testing    |
+
+**Note on Customer 360 Data Generation:**
+- Customer scale refers to base customer count
+- Actual records generated are significantly higher due to interactions (25 per customer) and transactions (8-12 per customer)
+- Example: 100K customers generates approximately 1M total customers in Customer 360 due to relationship multipliers
+- The generator creates realistic relationship densities, not just raw customer counts
 
 ## Example Queries
 
@@ -483,13 +503,18 @@ make hybrid-quick    # Complete hybrid setup
 
 ### Local Deployment
 - Docker and Docker Compose
-- 8GB+ RAM recommended
+- Python 3.8+ with pip (pre-installed in container)
+- Required Python packages: pandas, numpy, pyarrow, faker, tqdm, clickhouse-driver, clickhouse-connect, python-dotenv, pyyaml, click, networkx
+- 8GB+ RAM recommended (16GB for large datasets)
+- 10GB+ free disk space
 
 ### Hybrid Deployment
 - Docker and Docker Compose (for PuppyGraph)
-- Python 3.8+ (for data generation)
-- ClickHouse Cloud account
-- 4GB+ RAM recommended
+- Python 3.8+ with pip (for data generation)
+- ClickHouse Cloud account with instance running
+- Required Python packages: Install via `pip install -r requirements.txt`
+- 4GB+ RAM recommended (8GB for large datasets)
+- 10GB+ free disk space for local data files
 
 ## Technologies
 
@@ -510,26 +535,222 @@ make hybrid-quick    # Complete hybrid setup
 
 ## Troubleshooting
 
-### Check container status
+### Quick Diagnostics
 ```bash
+# Check container status and health
 make status
 docker ps
-```
 
-### View logs
-```bash
+# View container logs
 make logs
-```
 
-### Clean restart
-```bash
-make clean
-make local  # or make hybrid
+# Check specific service logs
+docker logs clickhouse-local  # for local deployment
+docker logs puppygraph-local  # for local deployment
 ```
 
 ### Common Issues
 
-1. **Port conflicts**: Ensure ports 8081, 8123, 9000, 7687, 8182 are available
-2. **Docker not running**: Start Docker Desktop
-3. **Permission denied**: Check Docker permissions or run with sudo
-4. **Hybrid connection fails**: Verify .env credentials are correct
+#### 1. Missing Python Dependencies
+**Symptom:** `ModuleNotFoundError: No module named 'networkx'` or similar
+**Solution:**
+```bash
+# Install all required dependencies
+pip install -r requirements.txt
+
+# Or install specific missing package
+pip install networkx pandas numpy pyarrow faker tqdm clickhouse-driver
+```
+
+#### 2. ClickHouse Authentication Errors (Local Deployment)
+**Symptom:** `Authentication failed` or `Code: 210. [SSL] record layer failure`
+**Root Cause:** ClickHouse container started without password configuration applied
+**Solution:**
+```bash
+# Stop containers
+make clean
+
+# Remove volumes to reset
+docker-compose -f deployments/local/docker-compose.yml down -v
+
+# Restart with clean state
+make local
+
+# Verify authentication is working
+docker exec clickhouse-local clickhouse-client --password=clickhouse123 --query "SELECT 1"
+```
+
+#### 3. ClickHouse Cloud Connection Issues (Hybrid Deployment)
+**Symptom:** `Connection refused` or `Authentication failed` when running `make generate-hybrid`
+**Checklist:**
+- Verify ClickHouse Cloud instance is running in your cloud console
+- Check `.env` file has correct credentials (no quotes around values)
+- Confirm `CLICKHOUSE_PORT=9440` (secure port for cloud)
+- Ensure `CLICKHOUSE_SECURE=true` is set
+- Test connectivity: `ping your-instance.clickhouse.cloud`
+- Check firewall allows outbound connections to port 9440
+
+**Solution:**
+```bash
+# Test connection manually
+clickhouse-client \
+  --host=your-instance.clickhouse.cloud \
+  --port=9440 \
+  --user=default \
+  --password=your-password \
+  --secure \
+  --query="SELECT 1"
+
+# If connection works, regenerate .env file
+cp deployments/hybrid/.env.example deployments/hybrid/.env
+# Edit with correct credentials (no quotes, no spaces)
+```
+
+#### 4. Data Generation Taking Too Long or Running Out of Memory
+**Symptom:** Process hangs, killed by OS, or takes hours for small dataset
+**Solution:**
+```bash
+# Start with smallest scale for testing
+python generate_data.py --customers 10000 --use-case customer360
+
+# Monitor memory usage
+docker stats  # for local deployment
+
+# If still having issues, reduce batch size
+python generate_data.py --customers 100000 --batch-size 50000
+```
+
+**Expected Generation Times:**
+- 10K customers: 1-2 minutes
+- 100K customers (Small): 5-10 minutes
+- 1M customers (Medium): 30-45 minutes
+- 10M customers (Large): 4-6 hours
+
+#### 5. Port Conflicts
+**Symptom:** `Error starting container: port is already allocated`
+**Solution:**
+```bash
+# Check what's using the ports
+lsof -i :8081  # PuppyGraph Web UI
+lsof -i :8123  # ClickHouse HTTP
+lsof -i :9000  # ClickHouse Native
+lsof -i :7687  # Cypher/Bolt
+lsof -i :8182  # Gremlin
+
+# Kill conflicting processes or stop other containers
+docker stop $(docker ps -q)  # stops all running containers
+```
+
+#### 6. PuppyGraph Cannot Connect to ClickHouse
+**Symptom:** PuppyGraph UI shows no data or connection errors
+**Solution for Local Deployment:**
+```bash
+# Verify ClickHouse is accessible from PuppyGraph container
+docker exec puppygraph-local curl http://clickhouse:8123/ping
+
+# Check schema configuration
+docker exec puppygraph-local cat /puppygraph/config/schema.json
+
+# Restart PuppyGraph to reload config
+docker restart puppygraph-local
+```
+
+**Solution for Hybrid Deployment:**
+```bash
+# Verify .env has correct CLICKHOUSE_HOST (without http://)
+# Should be: your-instance.clickhouse.cloud
+# NOT: https://your-instance.clickhouse.cloud
+
+# Restart with fresh config
+cd deployments/hybrid
+docker-compose down
+docker-compose --env-file .env up -d
+```
+
+#### 7. Query Performance Issues
+**Symptom:** Queries taking minutes instead of milliseconds
+**Common Causes & Solutions:**
+
+**Missing Date Filters:**
+```sql
+-- Slow (scans all 25M interactions)
+SELECT * FROM interactions;
+
+-- Fast (scans only recent data)
+SELECT * FROM interactions
+WHERE interaction_date >= today() - INTERVAL 30 DAY;
+```
+
+**Memory Limit Exceeded:**
+```sql
+-- Add memory limit to query
+SELECT ...
+SETTINGS max_memory_usage = '4G';
+```
+
+**Wrong Database Selected:**
+```sql
+-- Verify you're querying the correct database
+USE customer360;
+SELECT * FROM customers LIMIT 10;
+```
+
+#### 8. "Table does not exist" Errors
+**Symptom:** `DB::Exception: Table customer360.customers doesn't exist`
+**Solution:**
+```bash
+# Check which databases exist
+docker exec clickhouse-local clickhouse-client --query "SHOW DATABASES"
+
+# Check which tables exist in database
+docker exec clickhouse-local clickhouse-client --query "SHOW TABLES FROM customer360"
+
+# If tables missing, regenerate data
+make generate-local  # or make generate-hybrid
+```
+
+#### 9. Docker Desktop Not Running
+**Symptom:** `Cannot connect to the Docker daemon`
+**Solution:**
+- macOS/Windows: Start Docker Desktop application
+- Linux: `sudo systemctl start docker`
+
+#### 10. Disk Space Issues
+**Symptom:** `No space left on device` during data generation
+**Solution:**
+```bash
+# Check available disk space
+df -h
+
+# Clean up Docker resources
+docker system prune -a --volumes  # WARNING: removes ALL unused Docker data
+
+# Generate smaller dataset
+python generate_data.py --customers 10000 --use-case customer360
+```
+
+### Clean Restart (Nuclear Option)
+If nothing else works, start completely fresh:
+```bash
+# Stop everything
+make clean
+
+# Remove all Docker resources related to the project
+docker-compose -f deployments/local/docker-compose.yml down -v
+docker-compose -f deployments/hybrid/docker-compose.yml down -v
+
+# Remove generated data files
+rm -rf data/
+
+# Start fresh
+make local  # or make hybrid
+make generate-local  # or make generate-hybrid
+```
+
+### Getting Help
+
+If you encounter issues not covered here:
+1. Check container logs: `docker logs clickhouse-local` or `docker logs puppygraph-local`
+2. Verify system meets prerequisites (RAM, disk space, Docker version)
+3. Try the smallest dataset first: `--customers 10000`
+4. Check GitHub issues or documentation for similar problems

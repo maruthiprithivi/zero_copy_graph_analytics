@@ -70,6 +70,7 @@ id_rsa*
 logs/
 *.log
 *.out
+data_generation.log
 
 # Data files (generated data should not be committed)
 data/
@@ -128,3 +129,19 @@ config/.env
 config/terraform.tfvars
 config/app_config.json
 config/puppygraph/config.properties
+
+# Testing and agent-generated files
+notes/
+*.bak
+*_REPORT.md
+AGENT_*.md
+test_*.py
+benchmark_*.py
+verify_*.py
+load_*.py
+load_*.sh
+fix_*.sh
+*_results.json
+*_report*.json
+queries_fixed.*
+queries_corrected.*

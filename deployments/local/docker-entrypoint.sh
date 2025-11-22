@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
 
-# Start ClickHouse server in the background
+# Fix ownership of data directory
+chown -R clickhouse:clickhouse /var/lib/clickhouse /app/data 2>/dev/null || true
+
+# Start ClickHouse server in the background as clickhouse user
 echo "Starting ClickHouse server..."
-/usr/bin/clickhouse-server --config-file=/etc/clickhouse-server/config.xml &
+su -s /bin/bash clickhouse -c "/usr/bin/clickhouse-server --config-file=/etc/clickhouse-server/config.xml" &
 
 # Wait for ClickHouse to be ready
 echo "Waiting for ClickHouse to be ready..."
