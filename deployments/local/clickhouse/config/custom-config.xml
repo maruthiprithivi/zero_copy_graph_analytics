@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <logger>
+        <level>information</level>
+        <console>true</console>
+    </logger>
+
+    <listen_host>::</listen_host>
+
+    <max_connections>1000</max_connections>
+    <keep_alive_timeout>3</keep_alive_timeout>
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_server_memory_usage>0</max_server_memory_usage>
+    <max_thread_pool_size>10000</max_thread_pool_size>
+</clickhouse>

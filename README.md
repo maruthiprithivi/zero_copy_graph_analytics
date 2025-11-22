@@ -1,522 +1,535 @@
-# Customer 360 Demo
+# PuppyGraph + ClickHouse Demo
 
-Clean and comprehensive Customer 360 solution using ClickHouse Cloud + PuppyGraph with one-click AWS deployment.
+Demo repository showcasing graph analytics on OLAP data using PuppyGraph and ClickHouse for two real-world use cases: Customer 360 and Fraud Detection.
+
+## Overview
+
+**The Challenge:** Traditional OLAP databases excel at analytical queries but struggle with relationship-based queries (friend networks, fraud rings, recommendation paths).
+
+**The Solution:** PuppyGraph provides a zero-ETL graph query layer on top of ClickHouse, enabling both analytical SQL queries and graph traversals (Cypher/Gremlin) on the same data without duplication.
+
+**Performance:** Graph queries that would take minutes with traditional JOIN-heavy SQL execute in milliseconds using PuppyGraph's native graph traversal.
+
+## Table of Contents
+
+- [Use Cases](#use-cases)
+- [Documentation & Demo Guides](#documentation--demo-guides)
+- [Data Generation Architecture](#data-generation-architecture)
+- [Quick Start](#quick-start)
+- [Dataset & Query Results](#dataset--query-results)
+- [Configuration](#configuration-files)
+- [Repository Structure](#repository-structure)
+
+## Use Cases
+
+### 1. Customer 360
+Unified view of customer behavior combining transactional data with relationship graphs:
+- Product affinity networks
+- Customer segmentation analysis
+- Cross-sell recommendation paths
+- Behavioral pattern detection
+
+**Scale**: 35.4M records (1M customers, 7.3M transactions, 27M interactions)
+
+### 2. Fraud Detection
+Real-time fraud detection using graph pattern matching:
+- Fraud ring identification (5 embedded fraud scenarios)
+- Suspicious transaction networks
+- Shared attribute analysis (email, phone, device, address)
+- Anomaly detection in relationships
+
+**Scale**: 1.29M records (100K customers, 1M transactions, 1,950 fraud accounts)
+
+## Documentation & Demo Guides
+
+### Complete Walkthroughs
+
+These guides provide rich, narrative-driven demonstrations with business context, expected results, and detailed explanations of what, where, when, how, and why for each query.
+
+#### Customer 360 Demo
+- **[Complete Demo Guide](docs/demos/customer-360/README.md)** - 740-line narrative walkthrough of all 35 queries
+  - Business context for each query
+  - Expected results and insights
+  - SQL vs Cypher performance comparisons
+  - Real-world use case scenarios
+- **[SQL Queries Reference](docs/demos/customer-360/SQL-QUERIES.md)** - All 15 SQL queries with execution times
+- **[Cypher Queries Reference](docs/demos/customer-360/CYPHER-QUERIES.md)** - All 20 Cypher graph queries
+- **[Individual Query Docs](docs/demos/customer-360/queries/)** - Detailed per-query documentation
+
+#### Fraud Detection Demo
+- **[Complete Investigation Guide](docs/demos/fraud-detection/README.md)** - 760-line real fraud investigation narrative
+  - Step-by-step fraud detection process
+  - 5 fraud scenario deep-dives (account takeover, money laundering, credit card fraud, synthetic identity, merchant collusion)
+  - Pattern matching techniques
+  - Network analysis workflows
+- **[SQL Detection Queries](docs/demos/fraud-detection/SQL-QUERIES.md)** - All 10 SQL detection queries
+- **[Cypher Network Queries](docs/demos/fraud-detection/CYPHER-QUERIES.md)** - All 10 Cypher network analysis queries
+- **[Fraud Pattern Docs](docs/demos/fraud-detection/queries/)** - Detailed fraud pattern documentation
+
+### Technical Documentation
+
+#### Architecture & Design
+- **[System Overview](docs/architecture/system-overview.md)** - Complete architecture with 5 Mermaid diagrams
+  - System components and data flow
+  - Deployment architectures (local vs hybrid)
+  - Query execution paths
+- **[Data Models](docs/architecture/data-model.md)** - Comprehensive data modeling (1,053 lines)
+  - Entity-Relationship diagrams
+  - Customer 360 schema (4 entities, 11 relationships)
+  - Fraud Detection schema (5 entities, 13 relationships, 5 fraud patterns)
+  - Graph vs relational design patterns
+
+#### Performance & Benchmarks
+- **[Execution Benchmarks](docs/performance/benchmarks.md)** - Actual query performance metrics
+  - Customer 360: 15/15 SQL queries successful (10-1,609ms, avg 285ms)
+  - Fraud Detection: 10/10 SQL queries successful (11-293ms, avg 60ms)
+  - Scaling analysis for different data volumes
+- **[SQL vs Cypher Comparison](docs/performance/sql-vs-cypher-comparison.md)** - Technology selection guide
+  - When to use SQL (aggregations, filtering, reporting)
+  - When to use Cypher (path finding, network analysis, pattern matching)
+  - Performance trade-offs
+  - 10-1000x speedup for complex relationship queries
+
+### Documentation Navigation
+
+All documentation is centralized in the `/docs/` directory:
+- `/docs/README.md` - Complete documentation index
+- `/docs/demos/` - Demo guides and query references
+- `/docs/architecture/` - System design and data models
+- `/docs/performance/` - Benchmarks and comparisons
+
+## Data Generation Architecture
+
+The data generation system uses a modular architecture with specialized generators for each use case:
+
+```mermaid
+graph TD
+    A[generate_data.py<br/>CLI Entry Point] -->|--use-case customer360| B[app/data/generator.py<br/>Customer 360 Generator]
+    A -->|--use-case fraud-detection| C[use-cases/fraud-detection/generator.py<br/>Fraud Detection Generator]
+    A -->|--use-case both| B
+    A -->|--use-case both| C
+
+    B -->|Generates| D[Customers<br/>Products<br/>Transactions<br/>Interactions]
+    C -->|Generates| E[Customers with Fraud Markers<br/>Accounts<br/>Devices<br/>Merchants<br/>Transactions with Fraud Patterns]
+
+    D -->|Parquet Files| F[(ClickHouse<br/>Local or Cloud)]
+    E -->|Parquet Files| F
+
+    F -->|Zero-ETL| G[PuppyGraph<br/>Graph Query Layer]
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C fill:#ffe1e1
+    style G fill:#e1ffe1
+```
+
+### Generator Components
+
+1. **generate_data.py** - Main CLI orchestrator
+   - Accepts command-line arguments and environment variables
+   - Coordinates Customer 360 and Fraud Detection generation
+   - Handles ingestion to ClickHouse (local or cloud)
+
+2. **app/data/generator.py** - Customer 360 data generator
+   - Generates customers with 5 segments (VIP, Premium, Regular, Basic, New)
+   - Generates products (10K-50K based on scale)
+   - Generates transactions (8-12 per customer on average)
+   - Generates interactions (25 per customer)
+   - Supports batch file generation for large datasets
+
+3. **use-cases/fraud-detection/generator.py** - Fraud Detection data generator
+   - Generates customers with fraud markers (3% fraudulent)
+   - Generates accounts (5% involved in fraud)
+   - Generates devices (10% suspicious)
+   - Generates merchants (8% fraudulent)
+   - Embeds 5 fraud scenarios:
+     - Account Takeover (star pattern)
+     - Money Laundering (circular pattern)
+     - Credit Card Fraud (bipartite pattern)
+     - Synthetic Identity (clique pattern)
+     - Merchant Collusion (dense pattern)
 
 ## Quick Start
 
-1. **Configure:** Copy templates and add your credentials
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   cp .env.example .env
-   ```
+Choose your deployment option:
 
-2. **Deploy:** Single command deployment to AWS
-   ```bash
-   ./deploy.sh
-   ```
+### Option 1: Local Deployment (Everything in Docker)
 
-3. **Access:** Open your dashboards
-   - Customer 360 Dashboard: `http://YOUR-EC2-IP:8501`
-   - PuppyGraph UI: `http://YOUR-EC2-IP:8081`
+Run ClickHouse and PuppyGraph locally. Data generation scripts run inside the ClickHouse container.
 
-## Architecture
+```bash
+# Start services
+make local
 
+# Generate data (runs inside ClickHouse container)
+make generate-local
+
+# Check status
+make status
 ```
-                    ┌─────────────────┐
-                    │  ClickHouse     │
-                    │    Cloud        │
-                    │ (External SaaS) │
-                    │                 │
-                    │ • Customer Data │
-                    │ • Transactions  │
-                    │ • Interactions  │
-                    └────────▲────────┘
-                             │
-                             │ Queries data via
-                             │ HTTPS/Port 8443
-                             │
-           ┌─────────────────┴─────────────────┐
-           │         AWS EC2 Instance          │
-           │          (r5.xlarge)              │
-           │                                   │
-           │  ┌──────────────┐  ┌──────────┐   │
-           │  │  PuppyGraph  │  │ Streamlit│   │
-           │  │ Graph Engine │◄─┤ Dashboard│   │
-           │  │              │  │          │   │
-           │  │ • Zero ETL   │  │ • UI     │   │
-           │  │ • Cypher     │  │ • Charts │   │
-           │  │ • Real-time  │  │ • Search │   │
-           │  └──────────────┘  └──────────┘   │
-           │                                   │
-           │  • Docker Runtime                 │
-           │  • Ubuntu 22.04                   │
-           └───────────────────────────────────┘
-                             │
-                       External Access
-                             │
-                    ┌────────▼─────────┐
-                    │      Users       │
-                    │                  │
-                    │ :8501 Streamlit  │
-                    │ :8081 PuppyGraph │
-                    └──────────────────┘
+
+**Access:**
+- PuppyGraph Web UI: http://localhost:8081
+- ClickHouse HTTP: http://localhost:8123
+
+[See detailed local deployment guide](deployments/local/README.md)
+
+### Option 2: Hybrid Deployment (PuppyGraph Local + ClickHouse Cloud)
+
+Run PuppyGraph locally, connect to ClickHouse Cloud. Data generation runs on your local machine.
+
+```bash
+# Configure ClickHouse Cloud connection
+cp deployments/hybrid/.env.example deployments/hybrid/.env
+# Edit .env with your ClickHouse Cloud credentials
+
+# Start PuppyGraph
+make hybrid
+
+# Generate data (runs on your local machine, ingests to cloud)
+make generate-hybrid
+
+# Check status
+make status
+```
+
+**Access:**
+- PuppyGraph Web UI: http://localhost:8081
+- ClickHouse Cloud: Your cloud console
+
+[See detailed hybrid deployment guide](deployments/hybrid/README.md)
+
+### Follow-Along Demo
+
+For a guided walkthrough with business context and expected results, see our comprehensive demo guides:
+- **Customer 360**: [Start the demo →](docs/demos/customer-360/README.md)
+- **Fraud Detection**: [Start the investigation →](docs/demos/fraud-detection/README.md)
+
+## Dataset & Query Results
+
+### Overview
+**Total Dataset**: 36.7M records across both use cases
+- **Data Format**: Parquet with Snappy compression
+- **Storage**: ClickHouse (local Docker or Cloud)
+- **Graph Layer**: PuppyGraph (zero-ETL)
+
+### Customer 360 Dataset
+**Records**: 35.4M
+- 1M customers (5 segments: VIP, Premium, Regular, Basic, New)
+- 7.3M transactions (8-12 per customer, $10-$5,000 range)
+- 27M interactions (25 per customer, 5 types: view, cart, wishlist, review, share)
+- 50K products (10 categories)
+
+**Query Performance**:
+- **SQL Queries**: 15/15 successful
+  - Execution time: 10-1,609ms
+  - Average: 285ms
+  - Use cases: Segmentation, top customers, product performance, transaction analysis
+- **Cypher Queries**: 20 documented queries
+  - 10-1000x faster for relationship queries
+  - Use cases: Product recommendations, influencer networks, cross-sell paths, customer communities
+
+### Fraud Detection Dataset
+**Records**: 1.29M
+- 100K customers (3% fraudulent, 97% legitimate)
+- 170K accounts (5% involved in fraud)
+- 50K devices (10% suspicious)
+- 10K merchants (8% fraudulent)
+- 1M transactions (100K fraudulent, 900K legitimate)
+
+**Embedded Fraud Scenarios**: 5 real-world patterns
+1. **Account Takeover** (390 accounts): Star pattern with 1 device accessing many accounts
+2. **Money Laundering** (390 accounts): Circular transfer pattern between accounts
+3. **Credit Card Fraud** (390 accounts): Bipartite pattern between stolen cards and merchants
+4. **Synthetic Identity** (390 accounts): Clique pattern with shared fake identities
+5. **Merchant Collusion** (390 accounts): Dense network of colluding merchants
+
+**Query Performance**:
+- **SQL Queries**: 10/10 successful
+  - Execution time: 11-293ms
+  - Average: 60ms
+  - Use cases: Fraud flagging, velocity checks, anomaly detection
+- **Cypher Queries**: 10 network analysis queries
+  - 10-100x faster for fraud ring detection
+  - Use cases: Shared attribute networks, transaction rings, device fingerprinting, account clustering
+
+### Deployment Architectures
+
+#### Local Deployment
+```
+┌──────────────────────────────┐
+│  ClickHouse Container        │
+│  - ClickHouse Server         │
+│  - Python + Data Scripts     │
+└──────────────────────────────┘
+              ↕
+┌──────────────────────────────┐
+│  PuppyGraph Container        │
+│  - Graph Query Engine        │
+└──────────────────────────────┘
+```
+
+#### Hybrid Deployment
+```
+┌──────────────────────────────┐
+│  Your Local Machine          │
+│  - Python + Data Scripts     │
+└──────────────────────────────┘
+              ↓
+┌──────────────────────────────┐
+│  ClickHouse Cloud (Remote)   │
+│  - ClickHouse Database       │
+└──────────────────────────────┘
+              ↑
+┌──────────────────────────────┐
+│  PuppyGraph Container (Local)│
+│  - Graph Query Engine        │
+└──────────────────────────────┘
+```
+
+## Data Generation
+
+### For Local Deployment
+Data generation runs inside the ClickHouse container:
+
+```bash
+# Quick command
+make generate-local
+
+# Or manually with options
+docker exec -it clickhouse-local bash -c \
+  "cd /app && python3 generate_data.py --customers 500000 --use-case both"
+```
+
+### For Hybrid Deployment
+Data generation runs on your local machine:
+
+```bash
+# Quick command (uses deployments/hybrid/.env)
+make generate-hybrid
+
+# Or manually
+export $(cat deployments/hybrid/.env | grep -v '^#' | xargs)
+python3 generate_data.py --customers 500000 --use-case both
+```
+
+### Data Generation Options
+
+```bash
+# Using defaults
+python3 generate_data.py
+
+# Using configuration file
+python3 generate_data.py --env-file data.env
+
+# Using CLI parameters
+python3 generate_data.py \
+  --customers 500000 \
+  --seed 42 \
+  --use-case both \
+  --output-dir data \
+  --compression snappy \
+  --verbose
+```
+
+**Available options:**
+- `--customers`: Number of customers (100K, 1M, 10M, 100M)
+- `--seed`: Random seed for reproducibility
+- `--batch-size`: Batch size for file generation
+- `--output-dir`: Output directory for data files
+- `--compression`: Parquet compression (snappy, gzip, lz4)
+- `--use-case`: customer360, fraud-detection, or both
+- `--overwrite`: Overwrite existing files
+- `--verbose`: Enable debug logging
+- `--env-file`: Load configuration from file
+
+### Data Scales
+
+| Scale      | Customers | Transactions | RAM Required | Use Case               |
+|------------|-----------|--------------|--------------|------------------------|
+| Small      | 100K      | ~1M          | 4GB          | Testing, Development   |
+| Medium     | 1M        | ~10M         | 8GB          | Demos, POCs            |
+| Large      | 10M       | ~100M        | 16GB         | Production-like        |
+| Enterprise | 100M+     | ~1B+         | 32GB+        | Performance testing    |
+
+## Example Queries
+
+### Customer 360 - SQL (ClickHouse)
+```sql
+-- Top customers by lifetime value
+SELECT
+    customer_id,
+    name,
+    segment,
+    lifetime_value
+FROM customers
+WHERE segment = 'VIP'
+ORDER BY lifetime_value DESC
+LIMIT 10;
+```
+
+### Customer 360 - Cypher (PuppyGraph)
+```cypher
+// Find product recommendation paths
+MATCH path = (c:Customer {customer_id: 'CUST_12345'})-[:PURCHASED]->
+             (p1:Product)<-[:PURCHASED]-(other:Customer)-[:PURCHASED]->
+             (p2:Product)
+WHERE NOT (c)-[:PURCHASED]->(p2)
+RETURN p2.name, COUNT(*) as recommendation_strength
+ORDER BY recommendation_strength DESC
+LIMIT 5;
+```
+
+### Fraud Detection - Cypher (PuppyGraph)
+```cypher
+// Detect fraud rings (customers sharing multiple attributes)
+MATCH (c1:Customer)-[:SHARES_EMAIL|SHARES_PHONE|SHARES_ADDRESS]-(c2:Customer)
+WHERE c1.customer_id < c2.customer_id
+WITH c1, c2, COUNT(*) as shared_attributes
+WHERE shared_attributes >= 2
+RETURN c1.customer_id, c2.customer_id, shared_attributes
+ORDER BY shared_attributes DESC;
+```
+
+## Available Commands
+
+```bash
+# Deployment
+make local           # Start local deployment
+make hybrid          # Start hybrid deployment
+
+# Data Generation
+make generate-local  # Generate data for local deployment
+make generate-hybrid # Generate data for hybrid deployment
+
+# Operations
+make status          # Check deployment status
+make logs            # View container logs
+make clean           # Stop containers and clean up
+make destroy         # Destroy all resources (WARNING!)
+
+# Quick start (deploy + generate + status)
+make local-quick     # Complete local setup
+make hybrid-quick    # Complete hybrid setup
 ```
 
 ## Repository Structure
 
 ```
-customer360-demo/
-├── Python Application
-│   ├── app.py              # Streamlit dashboard (5 pages: Dashboard, Search, Recommendations, Analytics, About)
-│   ├── clickhouse.py       # ClickHouse operations (database setup, data loading, querying)
-│   ├── queries.py          # Graph queries using Cypher (8 analytical methods)
-│   ├── generator.py        # Synthetic data generation (scalable: 1M-100M customers)
-│   └── data_pipeline.py    # End-to-end pipeline orchestration
+.
+├── app/
+│   ├── data/              # Data generators
+│   │   └── generator.py   # Customer 360 generator
+│   ├── database/          # ClickHouse client
+│   ├── graph/             # PuppyGraph Cypher queries
+│   └── pipeline/          # Data ingestion pipeline
 │
-├── Infrastructure & Deployment
-│   ├── deploy.sh           # One-click deployment script with full automation
-│   ├── main.tf             # Terraform main configuration (EC2, VPC, Security Groups)
-│   ├── variables.tf        # Terraform variables with validation rules
-│   ├── outputs.tf          # Terraform outputs (IPs, URLs, SSH commands)
-│   ├── user_data.sh        # EC2 instance bootstrap script
-│   └── terraform/          # Modular Terraform structure
-│       ├── ec2/            # EC2 instance module
-│       ├── iam/            # IAM roles and policies
-│       └── networking/     # VPC, subnets, security groups
+├── config/
+│   └── puppygraph/        # PuppyGraph schema definitions
 │
-├── Configuration
-│   ├── config/
-│   │   └── puppygraph/
-│   │       ├── schema.json         # Graph schema (5 vertices, 9 edges)
-│   │       └── puppygraph.properties # PuppyGraph engine settings
-│   ├── secrets/
-│   │   ├── README.md              # Security and secret management guide
-│   │   ├── .env.example           # Environment variables template
-│   │   └── terraform.tfvars.example # Terraform configuration template
-│   ├── .env.example               # Main environment template
-│   └── terraform.tfvars.example   # Main Terraform template
+├── use-cases/
+│   └── fraud-detection/
+│       ├── generator.py   # Fraud detection generator
+│       └── queries/       # Fraud detection queries
 │
-├── Dependencies & Development
-│   ├── requirements.txt    # Production dependencies (31 essential packages)
-│   ├── pyproject.toml     # Development dependencies and tooling configuration
-│   └── .gitignore         # Comprehensive ignore rules for secrets, cache, etc.
+├── docs/                  # Complete documentation (75+ files)
+│   ├── README.md          # Documentation index
+│   ├── demos/             # Demo guides
+│   │   ├── customer-360/  # Customer 360 demo (740 lines)
+│   │   └── fraud-detection/ # Fraud detection demo (760 lines)
+│   ├── architecture/      # System design & data models
+│   └── performance/       # Benchmarks & comparisons
+│
+├── deployments/
+│   ├── local/             # Local deployment (Docker)
+│   │   ├── Dockerfile.clickhouse
+│   │   ├── docker-compose.yml
+│   │   └── README.md
+│   └── hybrid/            # Hybrid deployment
+│       ├── .env.example   # ClickHouse Cloud config template
+│       ├── docker-compose.yml
+│       └── README.md
+│
+├── experimental/          # Experimental code (not in production)
+│   └── persona_generator.py
+│
+├── data/                  # Generated data files (gitignored)
+├── generate_data.py       # Data generation CLI (main entry point)
+├── data.env.example       # Data generation config template
+├── CONFIG.yaml            # Main configuration file
+├── Makefile               # Deployment commands
+└── README.md
 ```
 
-### Key Files Explained
+## Configuration Files
 
-**Core Application Files:**
-- **app.py** (21KB): Multi-page Streamlit dashboard with customer search, 360-degree view, recommendations, and analytics
-- **clickhouse.py** (24KB): Complete ClickHouse integration with table management, data loading, and query execution
-- **queries.py** (12KB): Graph analytics using Cypher queries for customer insights, recommendations, and relationship analysis
-- **generator.py** (16KB): Synthetic data generator creating realistic customer, product, transaction, and interaction data
-- **data_pipeline.py** (10KB): Orchestrates the entire data generation and ingestion process
+### For Data Generation
+- **data.env.example**: Template for data generation configuration
+  - Customer scale, random seed, batch sizes
+  - Can be used standalone or with `--env-file` parameter
 
-**Infrastructure Files:**
-- **deploy.sh** (10KB): Comprehensive deployment automation with prerequisite checking, infrastructure deployment, and application setup
-- **main.tf**: AWS infrastructure definition supporting both new and existing VPC deployment
-- **user_data.sh**: EC2 bootstrap script for Docker, PuppyGraph, and system setup
+### For Hybrid Deployment
+- **deployments/hybrid/.env.example**: Template for ClickHouse Cloud connection
+  - ClickHouse Cloud host, port, credentials
+  - Required for hybrid deployment and data generation
 
-**Configuration Files:**
-- **schema.json** (650 lines): Complete graph schema defining Customer, Product, Transaction, Interaction, and SupportTicket vertices with their relationships
-- **puppygraph.properties**: PuppyGraph engine configuration for ClickHouse connectivity and performance optimization
+### Main Configuration
+- **CONFIG.yaml**: Central configuration for project settings
+  - Project metadata
+  - Default scales and settings
+  - AWS configuration (for future use)
 
-## Features
+## Prerequisites
 
-### Data Generation
-- **Scalable:** Generate 1M, 10M, or 100M customer records
-- **Realistic:** Using Faker library for authentic customer profiles, transactions, and interactions
-- **Optimized:** Batch processing and Parquet format for efficient storage and loading
+### Local Deployment
+- Docker and Docker Compose
+- 8GB+ RAM recommended
 
-### Graph Analytics  
-- **Real-time Queries:** Live graph traversals using Cypher queries
-- **Customer 360:** Complete customer view with purchase history, interactions, and relationships
-- **Recommendations:** Product recommendations based on customer behavior and similar customers
-- **Segment Analysis:** Customer segmentation and behavior analysis
+### Hybrid Deployment
+- Docker and Docker Compose (for PuppyGraph)
+- Python 3.8+ (for data generation)
+- ClickHouse Cloud account
+- 4GB+ RAM recommended
 
-### Interactive Dashboard
-- **Multi-page UI:** 5 comprehensive pages for different analytical views
-- **Search & Filter:** Advanced customer and product search capabilities
-- **Visualizations:** Interactive charts and graphs using Plotly
-- **Real-time Updates:** Live data updates with caching for performance
+## Technologies
 
-### Cloud-Native Architecture
-- **ClickHouse Cloud:** Managed analytics database for high-performance queries
-- **PuppyGraph:** Zero-ETL graph engine for real-time graph analytics
-- **AWS Deployment:** Automated EC2 deployment with proper security configuration
-- **Docker Runtime:** Containerized services for easy management
+- **ClickHouse**: OLAP database for analytical queries
+- **PuppyGraph**: Zero-ETL graph query engine
+- **Docker**: Containerization
+- **Python**: Data generation and pipeline
+- **Cypher/Gremlin**: Graph query languages
+- **Parquet**: Columnar data format
 
-## Installation & Deployment
+## Key Benefits
 
-### Prerequisites
-
-Before deployment, ensure you have:
-
-- **AWS CLI configured** with valid credentials
-- **Terraform installed** (version 1.0+)
-- **SSH access** configured for your AWS account
-- **ClickHouse Cloud instance** with credentials
-- **Valid AWS credentials** with EC2, VPC, and IAM permissions
-
-### Configuration Setup
-
-1. **Copy configuration templates:**
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   cp .env.example .env
-   ```
-
-2. **Edit terraform.tfvars with your AWS and ClickHouse details:**
-   ```hcl
-   aws_region = "us-east-1"
-   instance_type = "r5.xlarge"
-   
-   # ClickHouse Cloud Configuration
-   clickhouse_host = "your-cluster.clickhouse.cloud"
-   clickhouse_password = "your-secure-password"
-   
-   # Security Configuration  
-   owner_email = "your-email@company.com"
-   allowed_ssh_ips = ["YOUR-IP/32"]  # Your IP for SSH access
-   
-   # Data Scale Configuration
-   customer_scale = 1000000  # 1M customers (options: 1000000, 10000000, 100000000)
-   ```
-
-3. **Edit .env with application settings:**
-   ```bash
-   CLICKHOUSE_HOST=your-cluster.clickhouse.cloud
-   CLICKHOUSE_PORT=8443
-   CLICKHOUSE_PASSWORD=your-secure-password
-   CLICKHOUSE_DATABASE=customer360
-   
-   PUPPYGRAPH_HOST=localhost
-   PUPPYGRAPH_PASSWORD=secure-puppygraph-password
-   
-   CUSTOMER_SCALE=1000000
-   ```
-
-### Deployment Options
-
-#### Option 1: Full Automated Deployment (Recommended)
-```bash
-./deploy.sh
-```
-
-This single command will:
-1. Check all prerequisites
-2. Deploy AWS infrastructure via Terraform
-3. Wait for EC2 instance to be ready
-4. Upload and configure the application
-5. Generate sample data
-6. Load data into ClickHouse
-7. Start all services
-8. Provide access URLs
-
-#### Option 2: Step-by-Step Deployment
-```bash
-# Check prerequisites only
-./deploy.sh check
-
-# Deploy infrastructure only
-./deploy.sh infra
-
-# Generate and load data only
-./deploy.sh data
-
-# Start services only
-./deploy.sh start
-
-# Check deployment status
-./deploy.sh status
-```
-
-### VPC Configuration Options
-
-**Using Existing VPC (Cost-effective):**
-```hcl
-use_existing_vpc = true
-existing_vpc_id = "vpc-xxxxxxxxx"
-existing_subnet_id = "subnet-xxxxxxxxx"
-```
-
-**Creating New VPC:**
-```hcl
-use_existing_vpc = false
-vpc_cidr = "10.0.0.0/16"
-subnet_cidr = "10.0.1.0/24"
-```
-
-## Configuration Reference
-
-### Environment Variables
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `CLICKHOUSE_HOST` | ClickHouse Cloud endpoint | - | Yes |
-| `CLICKHOUSE_PORT` | ClickHouse port | 8443 | No |
-| `CLICKHOUSE_PASSWORD` | Database password | - | Yes |
-| `CLICKHOUSE_DATABASE` | Target database name | customer360 | No |
-| `PUPPYGRAPH_HOST` | PuppyGraph host | localhost | No |
-| `PUPPYGRAPH_PASSWORD` | PuppyGraph admin password | - | Yes |
-| `CUSTOMER_SCALE` | Number of customers to generate | 1000000 | No |
-
-### Terraform Variables
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `aws_region` | AWS deployment region | us-east-1 | No |
-| `instance_type` | EC2 instance type | r5.xlarge | No |
-| `clickhouse_host` | ClickHouse Cloud endpoint | - | Yes |
-| `clickhouse_password` | ClickHouse password | - | Yes |
-| `owner_email` | Email for resource tagging | - | Yes |
-| `allowed_ssh_ips` | IPs allowed for SSH access | - | Yes |
-| `customer_scale` | Customer data scale | 1000000 | No |
-
-### Scale Options
-
-Choose your data scale based on testing needs:
-
-- **1M customers (1,000,000)**: Standard demo, fast generation (~10 minutes)
-- **10M customers (10,000,000)**: Large-scale demo, moderate generation (~30 minutes)  
-- **100M customers (100,000,000)**: Enterprise-scale demo, extended generation (~2 hours)
-
-Update `CUSTOMER_SCALE` in both terraform.tfvars and .env files.
-
-## Usage Examples
-
-### Dashboard Navigation
-
-**Customer 360 Dashboard (http://EC2-IP:8501):**
-1. **Dashboard Page**: Overview metrics, customer segments, popular products
-2. **Customer Search**: Search customers by name or email, view detailed profiles
-3. **Recommendations**: Product recommendations based on customer behavior
-4. **Analytics**: Advanced analytics including customer journeys and category affinity
-5. **About**: System information and data statistics
-
-### Manual Operations
-
-**Generate Data Locally:**
-```bash
-python3 generator.py --scale 1000000 --output data
-```
-
-**Load Data into ClickHouse:**
-```bash
-python3 clickhouse.py --init --load --schema --status
-```
-
-**Run Sample Graph Queries:**
-```bash
-python3 queries.py
-```
-
-**Start Dashboard Locally:**
-```bash
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
-```
-
-### Graph Query Examples
-
-The system includes these analytical capabilities:
-
-- **Customer 360 View**: Complete customer profile with purchase history and interactions
-- **Product Recommendations**: Based on similar customer behavior and purchase patterns
-- **Customer Journey Analysis**: Track customer interactions and purchase paths
-- **Segment Analysis**: Customer segmentation based on lifetime value and behavior
-- **Category Affinity**: Identify customer preferences across product categories
-- **Similar Customer Discovery**: Find customers with similar purchase patterns
+- **Zero-ETL**: No data duplication between OLAP and graph stores
+- **Dual Query Support**: Run both SQL and graph queries on same data
+- **Real-time Analytics**: Graph queries execute in milliseconds
+- **Scalability**: Handles billions of edges efficiently
+- **Flexibility**: Choose local or cloud deployment
 
 ## Troubleshooting
 
+### Check container status
+```bash
+make status
+docker ps
+```
+
+### View logs
+```bash
+make logs
+```
+
+### Clean restart
+```bash
+make clean
+make local  # or make hybrid
+```
+
 ### Common Issues
 
-**1. ClickHouse Connection Fails**
-```bash
-# Test connection manually
-ping your-clickhouse-host
-telnet your-clickhouse-host 8443
-
-# Check credentials in .env file
-# Verify ClickHouse Cloud instance is running
-```
-
-**2. SSH Access Denied**
-```bash
-# Check your current IP
-curl -s https://checkip.amazonaws.com/
-
-# Update allowed_ssh_ips in terraform.tfvars
-# Redeploy: terraform apply
-```
-
-**3. EC2 Instance Not Ready**
-```bash
-# Check instance logs
-ssh -i customer360-key.pem ubuntu@EC2-IP 'tail -f /var/log/user-data.log'
-
-# Check services status
-ssh -i customer360-key.pem ubuntu@EC2-IP 'docker ps'
-```
-
-**4. Services Not Starting**
-```bash
-# Restart PuppyGraph
-ssh -i customer360-key.pem ubuntu@EC2-IP 'docker restart puppygraph'
-
-# Restart Streamlit
-ssh -i customer360-key.pem ubuntu@EC2-IP 'cd /opt/customer360 && streamlit run app.py --server.port 8501 --server.address 0.0.0.0'
-```
-
-**5. Data Generation Issues**
-```bash
-# Check disk space
-df -h
-
-# Monitor generation progress
-tail -f data_generation.log
-
-# Restart generation with smaller scale
-python3 generator.py --scale 100000
-```
-
-### Service Management
-
-**Check Service Status:**
-```bash
-# All services
-ssh ubuntu@EC2-IP 'docker ps && ps aux | grep streamlit'
-
-# PuppyGraph logs
-ssh ubuntu@EC2-IP 'docker logs puppygraph'
-
-# Application logs
-ssh ubuntu@EC2-IP 'tail -f /opt/customer360/streamlit.log'
-```
-
-**Restart Services:**
-```bash
-# Restart PuppyGraph
-ssh ubuntu@EC2-IP 'docker restart puppygraph'
-
-# Restart Dashboard
-ssh ubuntu@EC2-IP 'pkill -f streamlit && cd /opt/customer360 && nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > streamlit.log 2>&1 &'
-```
-
-### Infrastructure Issues
-
-**Terraform Problems:**
-```bash
-# Reinitialize Terraform
-terraform init -upgrade
-
-# Check state
-terraform show
-
-# Fix state issues
-terraform refresh
-```
-
-**AWS Resource Issues:**
-```bash
-# Check AWS credentials
-aws sts get-caller-identity
-
-# Verify region
-aws configure get region
-
-# Check resource limits
-aws ec2 describe-account-attributes
-```
-
-### Performance Optimization
-
-**For Large Datasets:**
-- Increase EC2 instance size to `r5.2xlarge` or larger
-- Use `c5.4xlarge` for CPU-intensive data generation
-- Enable batch processing for data ingestion
-- Configure ClickHouse connection pooling
-
-**For High Availability:**
-- Deploy in multiple availability zones
-- Set up Application Load Balancer
-- Configure auto-scaling groups
-- Implement health checks
-
-## Development
-
-### Local Development Setup
-
-```bash
-# Clone and setup
-git clone <repository-url>
-cd customer360-demo
-
-# Install dependencies
-pip install -r requirements.txt
-
-# For development with full tooling
-pip install -e .
-
-# Run tests
-pytest
-
-# Code formatting
-black .
-ruff check .
-```
-
-### Development Tools
-
-The project includes comprehensive development tooling:
-
-- **Testing**: pytest with coverage reporting
-- **Code Formatting**: black for consistent code style  
-- **Linting**: ruff for fast Python linting
-- **Type Checking**: mypy for static type checking
-- **Pre-commit Hooks**: Automated code quality checks
-
-### Project Structure for Development
-
-When working on the codebase:
-
-- **app.py**: Main Streamlit application - add new pages or modify existing ones
-- **queries.py**: Graph analytical queries - add new Cypher queries for insights
-- **generator.py**: Data generation - modify data patterns or add new data types
-- **clickhouse.py**: Database operations - extend table schemas or optimize queries
-- **config/puppygraph/schema.json**: Graph schema - add new vertices or edges
-
-### Contributing Guidelines
-
-1. **Follow Python coding standards**: Use black, ruff, and mypy
-2. **Add tests**: All new features should include appropriate tests  
-3. **Update documentation**: Modify this README for any new features or changes
-4. **Security first**: Never commit credentials or sensitive information
-5. **Performance aware**: Consider impact of changes on data generation and query performance
-
-## Cleanup
-
-**Destroy Infrastructure:**
-```bash
-./deploy.sh destroy
-```
-
-**Manual Cleanup:**
-```bash
-# Remove AWS resources
-terraform destroy
-
-# Clean local files  
-rm -rf data/
-rm -f customer360-key.pem
-rm -f terraform.tfstate*
-```
-
-## Security Considerations
-
-- All secrets are managed through template files and environment variables
-- SSH access is restricted to specified IP addresses
-- ClickHouse connections use SSL/TLS encryption
-- AWS resources are tagged for proper resource management
-- Security groups follow principle of least privilege
-
-For detailed security configuration, see `secrets/README.md`.
+1. **Port conflicts**: Ensure ports 8081, 8123, 9000, 7687, 8182 are available
+2. **Docker not running**: Start Docker Desktop
+3. **Permission denied**: Check Docker permissions or run with sudo
+4. **Hybrid connection fails**: Verify .env credentials are correct

@@ -1,31 +1,20 @@
-# Customer 360 Demo - Minimal Dependencies
-# Clean and simple Python packages for ClickHouse + PuppyGraph + Streamlit
+# Customer 360 & Fraud Detection Demo - Core Dependencies
 
-# Core data processing
-pandas==2.2.0
-numpy==1.26.3
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=12.0.0
 
-# ClickHouse integration
-clickhouse-driver==0.2.6
+# Data Generation
+faker>=18.0.0
+tqdm>=4.65.0
 
-# Cypher/Graph queries to PuppyGraph
-neo4j==5.17.0
-
-# Data generation
-faker==24.0.0
-
-# Web application
-streamlit==1.31.0
-
-# Visualization
-plotly==5.19.0
-
-# Configuration
-python-dotenv==1.0.1
-
-# Data validation (lightweight)
-pydantic==2.6.1
+# Database Connectivity
+clickhouse-driver>=0.2.6
+clickhouse-connect>=0.6.0
+neo4j>=5.8.0
 
 # Utilities
-tqdm==4.66.2
-requests==2.31.0
+python-dotenv>=1.0.0
+pyyaml>=6.0
+click>=8.0.0

@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # ClickHouse Database with integrated data generator
+  clickhouse:
+    build:
+      context: ../../
+      dockerfile: deployments/local/Dockerfile.clickhouse
+    container_name: clickhouse-local
+    hostname: clickhouse
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native TCP interface
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse123
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse/
+      - ./clickhouse/init:/docker-entrypoint-initdb.d/
+      - ./clickhouse/config:/etc/clickhouse-server/conf.d/
+      - ../../data:/app/data
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - local-network
+
+  # PuppyGraph Engine
+  puppygraph:
+    image: puppygraph/puppygraph:stable
+    container_name: puppygraph-local
+    hostname: puppygraph
+    ports:
+      - "8081:8081"   # Web UI
+      - "7687:7687"   # Cypher/Bolt
+      - "8182:8182"   # Gremlin
+    environment:
+      PUPPYGRAPH_PASSWORD: puppygraph123
+      QUERY_TIMEOUT: 5m
+    volumes:
+      - ./puppygraph/config:/puppygraph/config/
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - local-network
+
+volumes:
+  clickhouse_data:
+    driver: local
+
+networks:
+  local-network:
+    driver: bridge

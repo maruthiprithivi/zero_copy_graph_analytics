@@ -1,0 +1,20 @@
+{
+  "catalogs": [
+    {
+      "name": "clickhouse_local",
+      "type": "clickhouse",
+      "metastore": "clickhouse",
+      "properties": {
+        "jdbc.url": "jdbc:clickhouse://clickhouse:8123/default",
+        "jdbc.username": "default",
+        "jdbc.password": "clickhouse123"
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "name": "customer360_graph",
+      "catalog": "clickhouse_local"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # PuppyGraph Engine (Local) - Connects to ClickHouse Cloud
+  puppygraph:
+    image: puppygraph/puppygraph:stable
+    container_name: puppygraph-hybrid
+    hostname: puppygraph
+    ports:
+      - "8081:8081"   # Web UI
+      - "7687:7687"   # Cypher/Bolt
+      - "8182:8182"   # Gremlin
+    environment:
+      PUPPYGRAPH_PASSWORD: ${PUPPYGRAPH_PASSWORD:-puppygraph123}
+      QUERY_TIMEOUT: 5m
+    volumes:
+      - ./config:/puppygraph/config/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - hybrid-network
+
+networks:
+  hybrid-network:
+    driver: bridge

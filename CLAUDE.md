@@ -1,0 +1,5 @@
+- make sure the text color contrast is correct so that users can read it without any issues
+- make sure the buttons are horizontal and not vertical
+- make sure that the streamlit app demo covering use case scenarios are rich and contextual, with clear explanation of what, where, when, how and why provided in a narrative fashion and ensure the stories all align with rich and large supporting data
+- buttons need to be horizontal
+- Make sure the color contrast for the UI for dark and light modes are done correctly so that the text and components are all clearly visible/legible to the users

@@ -23,6 +23,7 @@ MANIFEST
 
 # Virtual environments
 .env
+data.env
 .venv
 env/
 venv/
@@ -30,6 +31,9 @@ ENV/
 env.bak/
 venv.bak/
 .python-version
+.playwright-mcp
+
+_old_files
 
 # IDEs and editors
 .vscode/
@@ -68,11 +72,15 @@ logs/
 *.out
 
 # Data files (generated data should not be committed)
+data/
+!data/.gitkeep
 data/*.csv
 data/*.parquet
 data/*.json
 data/generated/
 data/temp/
+data/customer-360/
+data/fraud-detection/
 
 # OS generated files
 .DS_Store
@@ -113,3 +121,10 @@ coverage.xml
 
 # Streamlit
 .streamlit/
+
+# Generated configuration files (DO NOT COMMIT USER CONFIGS)
+CONFIG.yaml
+config/.env
+config/terraform.tfvars
+config/app_config.json
+config/puppygraph/config.properties

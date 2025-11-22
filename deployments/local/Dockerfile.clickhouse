@@ -1,0 +1,33 @@
+FROM clickhouse/clickhouse-server:25.10
+
+# Install Python and required packages
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+RUN mkdir -p /app
+
+# Copy application code
+COPY app/ /app/app/
+COPY use-cases/ /app/use-cases/
+COPY requirements.txt /app/
+COPY generate_data.py /app/
+COPY data.env.example /app/
+
+# Install Python dependencies
+RUN pip3 install --break-system-packages -r /app/requirements.txt
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Set working directory
+WORKDIR /app
+
+# Add entrypoint script that starts ClickHouse and keeps container running
+COPY deployments/local/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,0 +1,21 @@
+{
+  "catalogs": [
+    {
+      "name": "clickhouse_cloud",
+      "type": "clickhouse",
+      "metastore": "clickhouse",
+      "properties": {
+        "jdbc.url": "${CLICKHOUSE_JDBC_URL}",
+        "jdbc.username": "${CLICKHOUSE_USER}",
+        "jdbc.password": "${CLICKHOUSE_PASSWORD}",
+        "jdbc.ssl": "true"
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "name": "customer360_graph",
+      "catalog": "clickhouse_cloud"
+    }
+  ]
+}
