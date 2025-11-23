@@ -34,11 +34,12 @@ MATCH (other)-[:PURCHASED]->(p2:Product)
 WHERE target.segment = other.segment
   AND NOT (target)-[:PURCHASED]->(p2)
   AND target <> other
+WITH p2, COLLECT(DISTINCT other) as similar_customers
 RETURN DISTINCT p2.name as recommended_product,
        p2.category,
        p2.brand,
        p2.price,
-       COUNT(DISTINCT other) as purchased_by_similar_customers
+       SIZE(similar_customers) as purchased_by_similar_customers
 ORDER BY purchased_by_similar_customers DESC, p2.name
 LIMIT 10;
 
@@ -112,10 +113,9 @@ LIMIT 20;
 // 10. Find Customers Without Purchases in High-Value Categories
 MATCH (c:Customer)
 WHERE c.segment IN ['VIP', 'Premium']
-  AND NOT EXISTS {
-    MATCH (c)-[:PURCHASED]->(p:Product)
-    WHERE p.category = 'Electronics'
-  }
+OPTIONAL MATCH (c)-[:PURCHASED]->(p:Product {category: 'Electronics'})
+WITH c, p
+WHERE p IS NULL
 RETURN c.customer_id,
        c.name,
        c.segment,
@@ -127,10 +127,9 @@ LIMIT 100;
 // Customers who bought in category A but not category B
 MATCH (c:Customer)-[:PURCHASED]->(p1:Product)
 WHERE p1.category = 'Electronics'
-  AND NOT EXISTS {
-    MATCH (c)-[:PURCHASED]->(p2:Product)
-    WHERE p2.category = 'Home'
-  }
+OPTIONAL MATCH (c)-[:PURCHASED]->(p2:Product {category: 'Home'})
+WITH c, p1, p2
+WHERE p2 IS NULL
 RETURN c.customer_id,
        c.name,
        c.segment,
@@ -188,11 +187,12 @@ WHERE target <> c1
   AND NOT (target)-[:PURCHASED]->(p3)
   AND p1 <> p2
   AND p2 <> p3
+WITH p3, COLLECT(DISTINCT c2) as recommenders
 RETURN DISTINCT p3.name as recommended_product,
        p3.category,
        p3.brand,
        p3.price,
-       COUNT(DISTINCT c2) as recommendation_strength
+       SIZE(recommenders) as recommendation_strength
 ORDER BY recommendation_strength DESC, p3.price DESC
 LIMIT 10;
 

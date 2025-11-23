@@ -2,7 +2,7 @@
 # Simplified commands for local and hybrid deployments
 
 .DEFAULT_GOAL := help
-.PHONY: help local hybrid generate-local generate-hybrid status clean destroy
+.PHONY: help local hybrid generate-local generate-hybrid init-schemas status clean destroy
 
 # Colors for output
 GREEN := \033[32m
@@ -23,6 +23,7 @@ help: ## Show available commands
 	@echo "  make generate-hybrid - Generate data (runs on local machine, ingests to cloud)"
 	@echo ""
 	@echo "$(GREEN)Operations:$(NC)"
+	@echo "  make init-schemas    - Initialize and verify PuppyGraph schemas"
 	@echo "  make status          - Check deployment status"
 	@echo "  make logs            - Show container logs"
 	@echo "  make clean           - Stop containers and clean up"
@@ -86,6 +87,17 @@ generate-local: ## Generate data in local deployment
 	docker exec -it clickhouse-local bash -c "cd /app && python3 generate_data.py --customers 100000 --use-case both"
 	@echo ""
 	@echo "$(GREEN)Data generation complete!$(NC)"
+
+# Schema initialization
+init-schemas: ## Initialize and verify PuppyGraph schemas
+	@echo "$(GREEN)Initializing PuppyGraph schemas...$(NC)"
+	@if ! docker ps | grep -q puppygraph; then \
+		echo "$(RED)Error: PuppyGraph is not running!$(NC)"; \
+		echo "Start it first with: make local or make hybrid"; \
+		exit 1; \
+	fi
+	@bash deployments/local/scripts/init-schemas.sh
+	@echo ""
 
 # Data generation for hybrid deployment
 generate-hybrid: check-python check-hybrid-env ## Generate data for hybrid deployment
