@@ -13,6 +13,7 @@ Demo repository showcasing graph analytics on OLAP data using PuppyGraph and Cli
 ## Table of Contents
 
 - [Use Cases](#use-cases)
+- [Configuration](#configuration)
 - [Quick Start](#quick-start)
 - [Dataset Overview](#dataset-overview)
 - [Example Queries](#example-queries)
@@ -51,6 +52,59 @@ Real-time fraud detection using graph pattern matching with embedded fraud scena
 **Queries**: 10 SQL + 10 Cypher queries
 
 [View Fraud Detection Documentation →](use-cases/fraud-detection/README.md)
+
+## Configuration
+
+The repository uses three environment template files for different purposes:
+
+### 1. `.env.example` (Root) - Main Application Configuration
+
+**Purpose**: Core application settings for ClickHouse, PuppyGraph, and Streamlit
+
+**Setup**:
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+**Key Settings**:
+- ClickHouse connection (host, port, credentials)
+- PuppyGraph configuration (ports, password)
+- Streamlit application settings
+- Data pipeline configuration
+- Performance tuning
+
+### 2. `data.env.example` (Root) - Data Generation Configuration
+
+**Purpose**: Control data generation parameters
+
+**Setup**:
+```bash
+cp data.env.example data.env
+# Edit data.env with desired scale
+python generate_data.py --env-file data.env
+```
+
+**Key Settings**:
+- Customer scale (100K, 1M, 10M, 100M)
+- Random seed for reproducibility
+- Batch size and compression
+- Use case selection (customer360, fraud-detection, both)
+
+### 3. `deployments/hybrid/.env.example` - Hybrid Deployment
+
+**Purpose**: ClickHouse Cloud connection for hybrid deployment
+
+**Setup**:
+```bash
+cp deployments/hybrid/.env.example deployments/hybrid/.env
+# Edit with your ClickHouse Cloud credentials
+make hybrid
+```
+
+**Key Settings**:
+- ClickHouse Cloud instance details
+- Secure connection configuration (port 9440, SSL enabled)
 
 ## Quick Start
 
