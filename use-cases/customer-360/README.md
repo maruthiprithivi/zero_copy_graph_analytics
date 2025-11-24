@@ -4,67 +4,31 @@
 
 Customer 360 creates a unified, comprehensive view of customer behavior by connecting all customer touchpoints into a single coherent narrative. Rather than viewing customer data in isolated silos transaction history here, support tickets there, website interactions somewhere else Customer 360 models customers, products, transactions, and interactions as connected nodes in a graph. This enables both aggregate analytics (SQL) and relationship-based insights (Cypher) on the same data.
 
-**The Power:** Answer questions like "What products should I recommend to this customer?" in milliseconds through multi-hop graph traversal, while still maintaining lightning-fast SQL analytics for reporting and segmentation.
+**The Power:** Answer questions like "What products should I recommend to this customer?" through multi-hop graph traversal, while still maintaining fast SQL analytics for reporting and segmentation.
 
 ## Where Does This Apply?
 
-Customer 360 transforms operations across every customer-facing industry:
+Customer 360 transforms operations across customer-facing industries:
 
-### E-commerce and Retail
-- Recommendation engines that drive 15-30% of total revenue
-- Product bundling and cross-sell campaigns based on actual buying patterns
-- Cart abandonment strategies informed by similar customer behavior
-- Inventory planning based on product affinity networks
+**E-commerce & Retail:** Recommendation engines, product bundling, cart abandonment strategies, inventory planning
 
-### SaaS and Subscription Businesses
-- Churn prediction based on engagement patterns and network effects
-- Expansion opportunity identification within existing accounts
-- Feature usage analysis connected to renewal likelihood
-- Customer cohort analysis and retention optimization
+**SaaS & Subscriptions:** Churn prediction, expansion opportunities, feature usage analysis, retention optimization
 
-### Banking and Financial Services
-- Personalized financial product recommendations based on life stage
-- Relationship complexity management across multiple products
-- Customer lifetime value optimization through cross-sell
-- Network-based segmentation and targeting
+**Banking & Financial Services:** Personalized recommendations, product cross-sell, lifetime value optimization, segmentation
 
-### Healthcare
-- Comprehensive patient views connecting history, treatments, and outcomes
-- Care coordination through provider relationship networks
-- Treatment recommendation based on similar patient journeys
-- Readmission risk identification through pattern analysis
+**Healthcare:** Patient journey analysis, care coordination, treatment recommendations, readmission risk identification
 
-### Telecommunications
-- Churn reduction through social network analysis (influencer identification)
-- Plan recommendation based on usage patterns and peer behavior
-- Support optimization through issue pattern recognition
-- Network effect monetization in connected customer communities
+**Telecommunications:** Churn reduction, plan recommendations, social network analysis, support optimization
 
 ## When to Use Customer 360
 
-**Customer Onboarding (Day 1)**
-- Compare new customer profile to existing customers
-- Predict likely journey and lifetime value
-- Route high-potential customers to premium onboarding
-- Set appropriate engagement cadence
+**Customer Onboarding:** Compare new profiles to existing customers, predict journey and lifetime value, route to appropriate onboarding tier
 
-**Retention Campaigns (Ongoing)**
-- Identify at-risk customers before churn (engagement drops, behavior changes)
-- Target VIP/Premium customers with declining activity
-- Trigger interventions based on similar customer churn patterns
-- Re-engage dormant customers with personalized offers
+**Retention Campaigns:** Identify at-risk customers, target declining VIP/Premium customers, trigger interventions based on similar churn patterns
 
-**Product Recommendations (Real-time)**
-- Collaborative filtering: what similar customers purchased
-- Product affinity: frequently bought together
-- Complementary products: what enhances the primary purchase
-- Category expansion: cross-sell to new product lines
+**Product Recommendations:** Collaborative filtering, product affinity, complementary products, category expansion
 
-**Cross-Sell Opportunities (Quarterly Campaigns)**
-- High-value customers who haven't purchased from profitable categories
-- Category gap analysis: customers in Category A but not Category B
-- Brand affinity expansion: loyal customers ready for brand extension
-- Segment-specific product targeting
+**Cross-Sell Opportunities:** Target high-value customers in untapped categories, category gap analysis, brand affinity expansion
 
 ## Why Graph + SQL Together?
 
@@ -75,14 +39,14 @@ Customer 360 transforms operations across every customer-facing industry:
 - Average order value and purchase frequency calculations
 
 **Cypher for Relationships and Recommendations:**
-- Collaborative filtering (3-hop traversal in 150-300ms vs seconds in SQL)
+- Collaborative filtering through multi-hop graph traversal
 - Product affinity networks and recommendation paths
 - Customer similarity analysis and clustering
 - Multi-degree relationship discovery
 
-**Performance Comparison:**
-- SQL Query 1 (Customer Segmentation): 10.5ms - Perfect for aggregations
-- Cypher Query 4 (Collaborative Filtering): 180ms for 3-hop traversal - 10-100x faster than SQL equivalent
+**Why Both Matter:**
+- SQL excels at aggregations and reporting
+- Cypher delivers significant performance improvements for relationship-based queries
 - Combined approach: Use SQL to find "what" and Cypher to find "why"
 
 ## How to Run
@@ -191,10 +155,9 @@ cypher-shell -a bolt://localhost:7687 \
 - Product → BELONGS_TO → Category (50K edges)
 - Product → MANUFACTURED_BY → Brand (50K edges)
 
-**Performance Metrics:**
-- SQL Queries: 15 total, 10-1,609ms execution time, 285ms average
-- Cypher Queries: 20 total, 10-1000x faster for relationship queries
-- Dataset generation time: 30-45 minutes for 1M customers
+**Dataset Characteristics:**
+- SQL Queries: 15 analytical queries covering segmentation, transactions, and cohorts
+- Cypher Queries: 20 graph queries for recommendations and relationship discovery
 - Storage: ~10GB uncompressed, ~3GB with Parquet Snappy compression
 
 ## SQL Queries (15 Total)
@@ -299,12 +262,11 @@ All queries are in `queries.cypher` file. Execute them in PuppyGraph Web UI.
 
 ### Product Recommendation Queries (Queries 4-6)
 - **Query 4: Collaborative Filtering** - "Customers like you also bought..."
-  - 3-hop traversal in 150-300ms (vs 5-10s in SQL)
-  - Returns top 10 products based on similar customer purchases
+  - Returns top products based on similar customer purchases
   - Use Case: Homepage recommendations, email campaigns
 
 - **Query 5: Product Affinity** - "Frequently bought together"
-  - Amazon-style product affinity
+  - Amazon-style product affinity discovery
   - Use Case: Product page recommendations, bundle creation
 
 - **Query 6: Category Expansion** - Cross-sell category discovery
@@ -360,7 +322,7 @@ All queries are in `queries.cypher` file. Execute them in PuppyGraph Web UI.
 2. Run Cypher Query 5 for product affinity (complementary suggestions)
 3. Run Cypher Query 6 for category expansion (diversification)
 
-**Implementation:** Cache top 20 recommendations per customer, refresh daily, serve via API in <100ms
+**Implementation:** Cache top 20 recommendations per customer, refresh daily, serve via API
 
 ### Use Case 3: Cross-Sell Campaign
 
@@ -396,24 +358,20 @@ All queries are in `queries.cypher` file. Execute them in PuppyGraph Web UI.
 
 **Action:** Create "Complete Your Setup" bundles with 10% discount when buying all items together
 
-## Performance Notes
+## When to Use Which
 
-**SQL Query Performance:**
-- Fastest: Query 1 (Segmentation) - 10.5ms
-- Slowest: Query 11 (Cohort Retention CTE) - 1,609ms
-- Average: 285ms
-- All queries complete in under 2 seconds
+**Use SQL for:**
+- Reporting, dashboards, and aggregations
+- Segment analysis and financial metrics
+- Customer cohort analysis
 
-**Cypher Query Performance:**
-- Simple queries (1-2 hops): 50-150ms
-- Collaborative filtering (3 hops): 150-300ms
-- Deep discovery (4+ hops): 500-1,000ms
-- All recommendation queries suitable for real-time serving
+**Use Cypher for:**
+- Real-time recommendations
+- Pattern discovery and relationship exploration
+- Network analysis and similarity matching
 
-**When to Use Which:**
-- Use SQL for: Reporting, dashboards, aggregations, segment analysis, financial metrics
-- Use Cypher for: Recommendations, pattern discovery, relationship exploration, network analysis
-- Combine both for: Comprehensive customer insights (aggregate metrics + relationship context)
+**Combine Both for:**
+- Comprehensive customer insights (aggregate metrics + relationship context)
 
 ## Next Steps
 
