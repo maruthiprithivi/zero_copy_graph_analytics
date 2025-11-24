@@ -117,7 +117,9 @@ def generate(env_file, customers, seed, batch_size, output_dir, compression, use
 
         if os.getenv('GENERATE_CUSTOMER_360', 'true').lower() == 'true':
             click.echo("Generating Customer 360 data...")
-            from app.data.generator import Customer360Generator
+            # Import customer 360 generator
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'use-cases', 'customer-360'))
+            from generator import Customer360Generator
             generator = Customer360Generator()
             data = generator.generate_all()
             generated_data.append(('customer360', data))

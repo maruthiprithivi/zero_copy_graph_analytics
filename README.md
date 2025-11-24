@@ -273,16 +273,16 @@ python3 generate_data.py \
 ├── use-cases/
 │   ├── customer-360/
 │   │   ├── README.md          # Customer 360 documentation
+│   │   ├── generator.py       # Customer 360 data generator
 │   │   ├── queries.sql        # 15 SQL queries
 │   │   └── queries.cypher     # 20 Cypher queries
 │   └── fraud-detection/
 │       ├── README.md          # Fraud Detection documentation
-│       ├── generator.py       # Fraud data generator
+│       ├── generator.py       # Fraud Detection data generator
 │       ├── queries.sql        # 10 SQL queries
 │       └── queries.cypher     # 10 Cypher queries
 │
 ├── app/
-│   ├── data/generator.py      # Customer 360 data generator
 │   ├── database/              # ClickHouse client
 │   ├── graph/queries.py       # Cypher query wrapper
 │   └── pipeline/              # Data ingestion pipeline
