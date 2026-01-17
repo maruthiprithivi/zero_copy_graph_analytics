@@ -19,7 +19,7 @@ echo ""
 
 # Function to check if PuppyGraph is healthy
 check_puppygraph_health() {
-    curl -f -s "${PUPPYGRAPH_URL}/health" > /dev/null 2>&1
+    curl -f -s "${PUPPYGRAPH_URL}" > /dev/null 2>&1
     return $?
 }
 
@@ -32,6 +32,38 @@ check_schemas_loaded() {
         return 0
     else
         echo "✗ customer360_graph schema not found"
+        return 1
+    fi
+}
+
+# Function to upload schema
+upload_schema() {
+    local schema_file="deployments/local/puppygraph/config/schema.json"
+    local puppygraph_user="puppygraph"
+    local puppygraph_password="${PUPPYGRAPH_PASSWORD:-puppygraph123}"
+
+    echo "Uploading schema from ${schema_file}..."
+
+    if [ ! -f "$schema_file" ]; then
+        echo "✗ ERROR: Schema file not found: $schema_file"
+        return 1
+    fi
+
+    local http_code=$(curl -XPOST \
+        -H "content-type: application/json" \
+        --data-binary @"$schema_file" \
+        --user "$puppygraph_user:$puppygraph_password" \
+        -w "%{http_code}" \
+        -o /tmp/schema_upload_response.txt \
+        -s \
+        "${PUPPYGRAPH_URL}/schema")
+
+    if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+        echo "✓ Schema uploaded successfully (HTTP $http_code)"
+        return 0
+    else
+        echo "✗ Schema upload failed (HTTP $http_code)"
+        cat /tmp/schema_upload_response.txt
         return 1
     fi
 }
@@ -72,15 +104,28 @@ if check_schemas_loaded; then
     exit 0
 else
     echo ""
-    echo "⚠ WARNING: Schemas not automatically loaded"
-    echo "This may be due to PuppyGraph version or configuration"
+    echo "⚠ Schemas not loaded - attempting automatic upload..."
     echo ""
-    echo "The schema is defined in:"
-    echo "  /puppygraph/config/puppygraph.json"
-    echo ""
-    echo "Please verify the schema manually via:"
-    echo "  1. Open http://${PUPPYGRAPH_HOST}:${PUPPYGRAPH_PORT}"
-    echo "  2. Check the graphs in the UI"
-    echo ""
-    exit 1
+
+    if upload_schema; then
+        echo ""
+        echo "Waiting 5 seconds for schema to initialize..."
+        sleep 5
+
+        if check_schemas_loaded; then
+            echo ""
+            echo "=================================================="
+            echo "✓ Schema initialization complete!"
+            echo "=================================================="
+            exit 0
+        else
+            echo "✗ ERROR: Schema uploaded but not visible yet"
+            echo "Please wait a moment and check the UI manually"
+            exit 1
+        fi
+    else
+        echo "✗ ERROR: Failed to upload schema automatically"
+        echo "Please upload manually via http://${PUPPYGRAPH_HOST}:${PUPPYGRAPH_PORT}"
+        exit 1
+    fi
 fi

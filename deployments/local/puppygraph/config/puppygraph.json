@@ -37,28 +37,6 @@
               "id": "product_id"
             }
           }
-        },
-        {
-          "label": "Transaction",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "transactions",
-            "metaFields": {
-              "id": "transaction_id"
-            }
-          }
-        },
-        {
-          "label": "Interaction",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "interactions",
-            "metaFields": {
-              "id": "interaction_id"
-            }
-          }
         }
       ],
       "edges": [
@@ -72,64 +50,7 @@
               "id": "transaction_id",
               "from": "customer_id",
               "to": "product_id"
-            },
-            "predicate": "status = 'completed'"
-          }
-        },
-        {
-          "label": "VIEWED",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "interactions",
-            "metaFields": {
-              "id": "interaction_id",
-              "from": "customer_id",
-              "to": "product_id"
-            },
-            "predicate": "type = 'view' AND product_id IS NOT NULL"
-          }
-        },
-        {
-          "label": "CLICKED",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "interactions",
-            "metaFields": {
-              "id": "interaction_id",
-              "from": "customer_id",
-              "to": "product_id"
-            },
-            "predicate": "type = 'click' AND product_id IS NOT NULL"
-          }
-        },
-        {
-          "label": "ADDED_TO_CART",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "interactions",
-            "metaFields": {
-              "id": "interaction_id",
-              "from": "customer_id",
-              "to": "product_id"
-            },
-            "predicate": "type = 'cart_add' AND product_id IS NOT NULL"
-          }
-        },
-        {
-          "label": "WISHLISTED",
-          "mappedTableSource": {
-            "catalog": "clickhouse_local",
-            "schema": "default",
-            "table": "interactions",
-            "metaFields": {
-              "id": "interaction_id",
-              "from": "customer_id",
-              "to": "product_id"
-            },
-            "predicate": "type = 'wishlist' AND product_id IS NOT NULL"
+            }
           }
         }
       ]
@@ -204,7 +125,7 @@
             "schema": "default",
             "table": "fraud_accounts",
             "metaFields": {
-              "id": "CONCAT(customer_id, '_owns_', account_id)",
+              "id": "account_id",
               "from": "customer_id",
               "to": "account_id"
             }
@@ -215,24 +136,24 @@
           "mappedTableSource": {
             "catalog": "clickhouse_local",
             "schema": "default",
-            "table": "device_account_usage",
+            "table": "fraud_transactions",
             "metaFields": {
-              "id": "CONCAT(account_id, '_used_', device_id)",
-              "from": "account_id",
+              "id": "transaction_id",
+              "from": "from_account_id",
               "to": "device_id"
             }
           }
         },
         {
-          "label": "FRAUD_RELATED",
+          "label": "PAID_MERCHANT",
           "mappedTableSource": {
             "catalog": "clickhouse_local",
             "schema": "default",
-            "table": "account_relationships",
+            "table": "fraud_transactions",
             "metaFields": {
-              "id": "CONCAT(from_account_id, '_related_', to_account_id)",
+              "id": "transaction_id",
               "from": "from_account_id",
-              "to": "to_account_id"
+              "to": "merchant_id"
             }
           }
         }

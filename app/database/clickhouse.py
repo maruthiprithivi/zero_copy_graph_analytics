@@ -54,6 +54,7 @@ class ClickHouseClient:
         self.user = os.getenv('CLICKHOUSE_USER', 'default')
         self.password = os.getenv('CLICKHOUSE_PASSWORD')
         self.database = os.getenv('CLICKHOUSE_DATABASE', 'customer360')
+        self.secure = os.getenv('CLICKHOUSE_SECURE', 'true').lower() == 'true'
         
         # Configuration options
         self.batch_size = int(os.getenv('INGESTION_BATCH_SIZE', 10000))
@@ -79,8 +80,8 @@ class ClickHouseClient:
                 port=self.port,
                 user=self.user,
                 password=self.password,
-                secure=True,
-                verify=True
+                secure=self.secure,
+                verify=self.secure
             )
             logger.debug(f"Initial connection to ClickHouse: {self.host}:{self.port}")
         except Exception as e:
@@ -99,8 +100,8 @@ class ClickHouseClient:
                 user=self.user,
                 password=self.password,
                 database=self.database,
-                secure=True,
-                verify=True
+                secure=self.secure,
+                verify=self.secure
             )
             logger.info(f"Connected to ClickHouse: {self.host}:{self.port}/{self.database}")
         except Exception as e:
@@ -152,6 +153,36 @@ class ClickHouseClient:
             return result[0][0]
         except Exception:
             return 0
+
+    def insert_dataframe(self, table_name: str, df: pd.DataFrame):
+        """Insert DataFrame into a table"""
+        try:
+            # Prepare DataFrame for ClickHouse
+            df = self._prepare_dataframe_for_clickhouse(df)
+
+            # Insert in batches
+            total_rows = len(df)
+            inserted_rows = 0
+
+            for i in range(0, total_rows, self.batch_size):
+                batch = df.iloc[i:i + self.batch_size]
+
+                # Convert to list of tuples for insertion
+                data = [tuple(row) for row in batch.values]
+
+                # Insert batch
+                self.client.execute(f"INSERT INTO {table_name} VALUES", data)
+                inserted_rows += len(batch)
+
+                # Log progress for large datasets
+                if total_rows > self.batch_size and inserted_rows % (self.batch_size * 5) == 0:
+                    logger.debug(f"  Inserted {inserted_rows:,}/{total_rows:,} rows into {table_name}")
+
+            logger.info(f"Inserted {inserted_rows:,} rows into {table_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to insert data into {table_name}: {e}")
+            raise
     
     def create_database(self):
         """Create the customer360 database if it doesn't exist"""
@@ -211,6 +242,85 @@ class ClickHouseClient:
                     session_id String
                 ) ENGINE = MergeTree()
                 ORDER BY (customer_id, timestamp)
+            """,
+            'fraud_customers': """
+                CREATE TABLE IF NOT EXISTS fraud_customers (
+                    customer_id String,
+                    name String,
+                    email String,
+                    phone String,
+                    ssn_hash String,
+                    address String,
+                    city String,
+                    state String,
+                    zip_code String,
+                    date_of_birth Date,
+                    risk_score Float64,
+                    created_at DateTime,
+                    status String,
+                    is_fraudulent UInt8
+                ) ENGINE = MergeTree()
+                ORDER BY customer_id
+            """,
+            'fraud_accounts': """
+                CREATE TABLE IF NOT EXISTS fraud_accounts (
+                    account_id String,
+                    customer_id String,
+                    account_type String,
+                    balance Float64,
+                    credit_limit Nullable(Float64),
+                    opened_at DateTime,
+                    status String,
+                    is_fraudulent UInt8
+                ) ENGINE = MergeTree()
+                ORDER BY (customer_id, account_id)
+            """,
+            'fraud_devices': """
+                CREATE TABLE IF NOT EXISTS fraud_devices (
+                    device_id String,
+                    device_fingerprint String,
+                    device_type String,
+                    os String,
+                    browser String,
+                    ip_address String,
+                    location String,
+                    first_seen DateTime,
+                    last_seen DateTime,
+                    is_suspicious UInt8
+                ) ENGINE = MergeTree()
+                ORDER BY device_id
+            """,
+            'fraud_merchants': """
+                CREATE TABLE IF NOT EXISTS fraud_merchants (
+                    merchant_id String,
+                    merchant_name String,
+                    category String,
+                    address String,
+                    registration_date Date,
+                    volume_last_30d Float64,
+                    risk_score Float64,
+                    is_verified UInt8,
+                    is_fraudulent UInt8
+                ) ENGINE = MergeTree()
+                ORDER BY merchant_id
+            """,
+            'fraud_transactions': """
+                CREATE TABLE IF NOT EXISTS fraud_transactions (
+                    transaction_id String,
+                    from_account_id String,
+                    to_account_id Nullable(String),
+                    amount Float64,
+                    currency String,
+                    transaction_type String,
+                    merchant_id Nullable(String),
+                    device_id String,
+                    ip_address String,
+                    timestamp DateTime,
+                    is_flagged UInt8,
+                    risk_score Float64,
+                    is_fraudulent UInt8
+                ) ENGINE = MergeTree()
+                ORDER BY (from_account_id, timestamp)
             """
         }
         
@@ -245,8 +355,12 @@ class ClickHouseClient:
     
     def load_data_from_parquet(self, data_dir: str = "data", batch_size: int = 10000):
         """Load data from Parquet files into ClickHouse tables"""
-        
-        tables = ['customers', 'products', 'transactions', 'interactions']
+
+        tables = [
+            'customers', 'products', 'transactions', 'interactions',
+            'fraud_customers', 'fraud_accounts', 'fraud_devices',
+            'fraud_merchants', 'fraud_transactions'
+        ]
         
         for table in tables:
             # Check for single file first
@@ -308,7 +422,11 @@ class ClickHouseClient:
     
     def load_batch_files(self, data_dir: str):
         """Load data from batch parquet files"""
-        tables = ['customers', 'products', 'transactions', 'interactions']
+        tables = [
+            'customers', 'products', 'transactions', 'interactions',
+            'fraud_customers', 'fraud_accounts', 'fraud_devices',
+            'fraud_merchants', 'fraud_transactions'
+        ]
         
         for table in tables:
             table_dir = os.path.join(data_dir, table)
@@ -418,17 +536,21 @@ class ClickHouseClient:
     
     def get_table_counts(self) -> Dict[str, int]:
         """Get row counts for all tables"""
-        tables = ['customers', 'products', 'transactions', 'interactions']
+        tables = [
+            'customers', 'products', 'transactions', 'interactions',
+            'fraud_customers', 'fraud_accounts', 'fraud_devices',
+            'fraud_merchants', 'fraud_transactions'
+        ]
         counts = {}
-        
+
         for table in tables:
             try:
                 result = self.client.execute(f"SELECT COUNT(*) FROM {table}")
                 counts[table] = result[0][0]
             except Exception as e:
-                logger.error(f"Failed to count {table}: {e}")
+                logger.debug(f"Table {table} not found or error: {e}")
                 counts[table] = 0
-        
+
         return counts
     
     def run_sample_queries(self):

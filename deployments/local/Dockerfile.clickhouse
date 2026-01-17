@@ -1,4 +1,4 @@
-FROM clickhouse/clickhouse-server:25.10
+FROM clickhouse/clickhouse-server:25.9
 
 # Install Python and required packages
 RUN apt-get update && apt-get install -y \
@@ -16,7 +16,7 @@ COPY app/ /app/app/
 COPY use-cases/ /app/use-cases/
 COPY requirements.txt /app/
 COPY generate_data.py /app/
-COPY data.env.example /app/
+COPY .env.example /app/
 
 # Install Python dependencies (without --break-system-packages for compatibility)
 RUN pip3 install -r /app/requirements.txt

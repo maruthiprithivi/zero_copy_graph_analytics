@@ -29,9 +29,9 @@ services:
     networks:
       - local-network
 
-  # PuppyGraph Engine
+  # PuppyGraph Engine - Zero-ETL Graph Query Layer
   puppygraph:
-    image: puppygraph/puppygraph:stable
+    image: puppygraph/puppygraph:0.109
     container_name: puppygraph-local
     hostname: puppygraph
     ports:
@@ -41,6 +41,13 @@ services:
     environment:
       PUPPYGRAPH_PASSWORD: puppygraph123
       QUERY_TIMEOUT: 5m
+      JAVA_OPTS: >-
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=50
+        -XX:+UseStringDeduplication
+        -XX:+OptimizeStringConcat
+        -Xms2g
+        -Xmx8g
     volumes:
       - ./puppygraph/config:/puppygraph/config/
     depends_on:

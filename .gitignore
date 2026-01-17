@@ -120,6 +120,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# Test directory and outputs (internal tooling)
+test/
+test/reports/
+test/logs/
+
 # Streamlit
 .streamlit/
 
@@ -129,6 +134,9 @@ config/.env
 config/terraform.tfvars
 config/app_config.json
 config/puppygraph/config.properties
+
+# Claude Code session files
+.claude/
 
 # Testing and agent-generated files
 notes/

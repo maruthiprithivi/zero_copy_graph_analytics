@@ -230,7 +230,7 @@ JOIN products p1 ON t1.product_id = p1.product_id
 JOIN products p2 ON t2.product_id = p2.product_id
 WHERE p1.product_id < p2.product_id
 GROUP BY p1.name, p2.name
-HAVING times_bought_together >= 5
+HAVING times_bought_together >= 2
 ORDER BY times_bought_together DESC
 LIMIT 50;
 
@@ -248,4 +248,175 @@ LEFT JOIN transactions t ON c.customer_id = t.customer_id
 GROUP BY c.customer_id, c.name, c.segment
 HAVING last_purchase_date IS NOT NULL
 ORDER BY days_since_last_purchase DESC
+LIMIT 100;
+
+-- ============================================================================
+-- REVENUE ANALYTICS (ClickHouse excels at aggregations)
+-- ============================================================================
+
+-- 16. Top Spending VIP Customers
+SELECT
+    c.customer_id,
+    c.name,
+    c.segment,
+    COUNT(t.transaction_id) as purchases,
+    SUM(t.amount) as total_spent
+FROM customers c
+JOIN transactions t ON c.customer_id = t.customer_id
+WHERE c.segment = 'VIP'
+GROUP BY c.customer_id, c.name, c.segment
+ORDER BY total_spent DESC
+LIMIT 20;
+
+-- 17. Revenue by Product Category
+SELECT
+    p.category,
+    COUNT(*) as transaction_count,
+    SUM(t.amount) as total_revenue,
+    AVG(t.amount) as avg_transaction_value
+FROM transactions t
+JOIN products p ON t.product_id = p.product_id
+GROUP BY p.category
+ORDER BY total_revenue DESC;
+
+-- 18. Revenue by Sales Channel
+SELECT
+    channel,
+    COUNT(*) as transactions,
+    SUM(amount) as revenue,
+    AVG(amount) as avg_order_value
+FROM transactions
+GROUP BY channel
+ORDER BY revenue DESC;
+
+-- ============================================================================
+-- HEAVY ANALYTICAL QUERIES (ClickHouse Strengths - Not Graph-Friendly)
+-- ============================================================================
+
+-- 19. Running Total Revenue with Window Functions
+SELECT
+    toDate(timestamp) as day,
+    SUM(amount) as daily_revenue,
+    SUM(SUM(amount)) OVER (ORDER BY toDate(timestamp)) as cumulative_revenue,
+    AVG(SUM(amount)) OVER (ORDER BY toDate(timestamp) ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as rolling_7day_avg
+FROM transactions
+GROUP BY day
+ORDER BY day DESC
+LIMIT 30;
+
+-- 20. Customer Rank by Spend with Percentile Analysis
+SELECT
+    c.customer_id,
+    c.name,
+    c.segment,
+    SUM(t.amount) as total_spent,
+    RANK() OVER (PARTITION BY c.segment ORDER BY SUM(t.amount) DESC) as rank_in_segment,
+    PERCENT_RANK() OVER (ORDER BY SUM(t.amount)) as overall_percentile,
+    SUM(t.amount) / SUM(SUM(t.amount)) OVER () * 100 as pct_of_total_revenue
+FROM customers c
+JOIN transactions t ON c.customer_id = t.customer_id
+GROUP BY c.customer_id, c.name, c.segment
+ORDER BY total_spent DESC
+LIMIT 50;
+
+-- 21. Time-Series Funnel Analysis (Views -> Clicks -> Purchases by Day)
+SELECT
+    toDate(timestamp) as day,
+    interaction_type,
+    COUNT(*) as count,
+    COUNT(*) - lagInFrame(COUNT(*)) OVER (PARTITION BY interaction_type ORDER BY toDate(timestamp)) as day_over_day_change
+FROM (
+    SELECT timestamp, 'view' as interaction_type FROM interactions WHERE type = 'view'
+    UNION ALL
+    SELECT timestamp, 'purchase' as interaction_type FROM interactions WHERE type = 'purchase'
+)
+GROUP BY day, interaction_type
+ORDER BY day DESC, interaction_type
+LIMIT 60;
+
+-- 22. Statistical Distribution by Segment (Std Dev, Variance, Quartiles)
+SELECT
+    segment,
+    COUNT(*) as customer_count,
+    AVG(ltv) as avg_ltv,
+    stddevPop(ltv) as std_dev_ltv,
+    varPop(ltv) as variance_ltv,
+    quantile(0.25)(ltv) as q1_ltv,
+    quantile(0.50)(ltv) as median_ltv,
+    quantile(0.75)(ltv) as q3_ltv,
+    quantile(0.99)(ltv) as p99_ltv,
+    max(ltv) - min(ltv) as ltv_range
+FROM customers
+GROUP BY segment
+ORDER BY avg_ltv DESC;
+
+-- 23. Month-over-Month Growth Rate Analysis
+WITH monthly_revenue AS (
+    SELECT
+        toStartOfMonth(timestamp) as month,
+        SUM(amount) as revenue,
+        COUNT(DISTINCT customer_id) as unique_customers
+    FROM transactions
+    GROUP BY month
+)
+SELECT
+    month,
+    revenue,
+    unique_customers,
+    lagInFrame(revenue) OVER (ORDER BY month) as prev_month_revenue,
+    CASE WHEN lagInFrame(revenue) OVER (ORDER BY month) > 0
+         THEN (revenue - lagInFrame(revenue) OVER (ORDER BY month)) / lagInFrame(revenue) OVER (ORDER BY month) * 100
+         ELSE 0
+    END as mom_growth_pct,
+    revenue / unique_customers as revenue_per_customer
+FROM monthly_revenue
+ORDER BY month DESC
+LIMIT 12;
+
+-- 24. Product Performance Cube (Multi-Dimensional Aggregation)
+SELECT
+    p.category,
+    p.brand,
+    c.segment,
+    COUNT(*) as transactions,
+    SUM(t.amount) as revenue,
+    AVG(t.amount) as avg_order_value,
+    COUNT(DISTINCT t.customer_id) as unique_customers
+FROM transactions t
+JOIN products p ON t.product_id = p.product_id
+JOIN customers c ON t.customer_id = c.customer_id
+GROUP BY
+    GROUPING SETS (
+        (p.category, p.brand, c.segment),
+        (p.category, p.brand),
+        (p.category, c.segment),
+        (p.category),
+        ()
+    )
+ORDER BY revenue DESC
+LIMIT 100;
+
+-- 25. Customer Recency-Frequency-Monetary (RFM) Scoring
+WITH rfm_data AS (
+    SELECT
+        customer_id,
+        dateDiff('day', MAX(timestamp), today()) as recency,
+        COUNT(*) as frequency,
+        SUM(amount) as monetary
+    FROM transactions
+    GROUP BY customer_id
+)
+SELECT
+    r.customer_id,
+    c.name,
+    c.segment,
+    r.recency,
+    r.frequency,
+    r.monetary,
+    ntile(5) OVER (ORDER BY r.recency DESC) as r_score,
+    ntile(5) OVER (ORDER BY r.frequency) as f_score,
+    ntile(5) OVER (ORDER BY r.monetary) as m_score
+FROM rfm_data r
+JOIN customers c ON r.customer_id = c.customer_id
+ORDER BY r.monetary DESC
 LIMIT 100;

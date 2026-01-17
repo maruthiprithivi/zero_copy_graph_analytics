@@ -355,7 +355,7 @@ class Customer360Queries:
                 'unique_categories_purchased': 8
             },
             {
-                'segment': 'Standard',
+                'segment': 'Regular',
                 'total_customers': 450000,
                 'total_purchases': 1350000,
                 'total_revenue': 189000000.75,
@@ -380,9 +380,9 @@ class Customer360Queries:
         """Mock customer search results"""
         all_customers = [
             {'customer_id': '0002d9cc-ce1e-4ed2-b169-7d1a778e7a72', 'customer_name': 'Michael Myers', 'email': 'michael.myers@example.org', 'segment': 'Premium', 'ltv': 5200.50, 'total_purchases': 15, 'total_spent': 8750.25},
-            {'customer_id': '00038af4-afee-4e3a-8ba2-9b31d77eff7f', 'customer_name': 'John Mcconnell', 'email': 'john.mcconnell@example.com', 'segment': 'Standard', 'ltv': 2800.75, 'total_purchases': 8, 'total_spent': 3420.50},
+            {'customer_id': '00038af4-afee-4e3a-8ba2-9b31d77eff7f', 'customer_name': 'John Mcconnell', 'email': 'john.mcconnell@example.com', 'segment': 'Regular', 'ltv': 2800.75, 'total_purchases': 8, 'total_spent': 3420.50},
             {'customer_id': '00054351-cc20-43e4-a10e-9e6e39fc4311', 'customer_name': 'Sarah Duncan', 'email': 'sarah.duncan@example.net', 'segment': 'Premium', 'ltv': 6100.00, 'total_purchases': 18, 'total_spent': 12450.75},
-            {'customer_id': '0008ab35-aa33-40ca-bd85-64c3870e310f', 'customer_name': 'Michael Gardner', 'email': 'michael.gardner@gmail.com', 'segment': 'Standard', 'ltv': 3200.25, 'total_purchases': 10, 'total_spent': 4680.00},
+            {'customer_id': '0008ab35-aa33-40ca-bd85-64c3870e310f', 'customer_name': 'Michael Gardner', 'email': 'michael.gardner@gmail.com', 'segment': 'Regular', 'ltv': 3200.25, 'total_purchases': 10, 'total_spent': 4680.00},
             {'customer_id': '0009a6c7-832e-4ab8-b803-a3046b06a9f9', 'customer_name': 'John Palmer', 'email': 'john.palmer@yahoo.com', 'segment': 'Basic', 'ltv': 1500.50, 'total_purchases': 5, 'total_spent': 1200.25}
         ]
         

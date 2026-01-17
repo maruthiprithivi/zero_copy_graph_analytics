@@ -2,7 +2,7 @@
 # Simplified commands for local and hybrid deployments
 
 .DEFAULT_GOAL := help
-.PHONY: help local hybrid generate-local generate-hybrid init-schemas status clean destroy
+.PHONY: help local hybrid generate-local generate-hybrid init-schemas status clean destroy test-e2e clean-data
 
 # Colors for output
 GREEN := \033[32m
@@ -28,6 +28,14 @@ help: ## Show available commands
 	@echo "  make logs            - Show container logs"
 	@echo "  make clean           - Stop containers and clean up"
 	@echo "  make destroy         - Destroy all resources (WARNING!)"
+	@echo ""
+	@echo "$(GREEN)Testing:$(NC)"
+	@echo "  make test-e2e             - Run full E2E test suite"
+	@echo "  make test-comprehensive   - Run comprehensive E2E with all stages and metrics"
+	@echo "  make test-comprehensive-quick - Quick comprehensive test (skip data/schema)"
+	@echo "  make test-customer360     - Run Customer 360 tests only"
+	@echo "  make test-fraud           - Run Fraud Detection tests only"
+	@echo "  make clean-data           - Clean all data from ClickHouse"
 	@echo ""
 
 # Check prerequisites
@@ -163,3 +171,55 @@ hybrid-quick: hybrid ## Quick hybrid setup
 	@sleep 10
 	@make generate-hybrid
 	@make status
+
+# E2E Testing
+test-e2e: check-docker ## Run full E2E test suite
+	@echo "$(GREEN)Running E2E Test Suite...$(NC)"
+	@bash test/scripts/run_e2e_tests.sh
+	@echo "$(GREEN)E2E tests complete!$(NC)"
+
+test-e2e-quick: check-docker ## Run E2E tests (skip start if services running)
+	@echo "$(GREEN)Running E2E Test Suite (quick mode)...$(NC)"
+	@bash test/scripts/run_e2e_tests.sh --skip-start
+	@echo "$(GREEN)E2E tests complete!$(NC)"
+
+# Comprehensive Testing (with metrics)
+test-comprehensive: check-docker check-python ## Run comprehensive E2E test with all stages
+	@echo "$(GREEN)Running Comprehensive E2E Test Suite...$(NC)"
+	@echo "$(YELLOW)This will run: data loading, schema loading, queries, verification$(NC)"
+	@python3 test/comprehensive_test_runner.py --deployment local --use-case all --verbose
+	@echo "$(GREEN)Comprehensive tests complete!$(NC)"
+
+test-comprehensive-quick: check-docker check-python ## Run comprehensive E2E tests (skip data/schema loading)
+	@echo "$(GREEN)Running Comprehensive E2E Test Suite (quick mode)...$(NC)"
+	@python3 test/comprehensive_test_runner.py --deployment local --use-case all --skip-data-loading --skip-schema-loading --verbose
+	@echo "$(GREEN)Comprehensive tests complete!$(NC)"
+
+test-customer360: check-docker check-python ## Run tests for Customer 360 only
+	@echo "$(GREEN)Running Customer 360 Test Suite...$(NC)"
+	@python3 test/comprehensive_test_runner.py --deployment local --use-case customer-360 --skip-data-loading --skip-schema-loading
+	@echo "$(GREEN)Customer 360 tests complete!$(NC)"
+
+test-fraud: check-docker check-python ## Run tests for Fraud Detection only
+	@echo "$(GREEN)Running Fraud Detection Test Suite...$(NC)"
+	@python3 test/comprehensive_test_runner.py --deployment local --use-case fraud-detection --skip-data-loading --skip-schema-loading
+	@echo "$(GREEN)Fraud Detection tests complete!$(NC)"
+
+# Clean data from ClickHouse
+clean-data: ## Clean all data from ClickHouse (keeps schema)
+	@echo "$(YELLOW)Cleaning data from ClickHouse...$(NC)"
+	@if docker ps | grep -q clickhouse-local; then \
+		echo "Truncating tables..."; \
+		docker exec clickhouse-local clickhouse-client --query "TRUNCATE TABLE IF EXISTS customers" 2>/dev/null || true; \
+		docker exec clickhouse-local clickhouse-client --query "TRUNCATE TABLE IF EXISTS products" 2>/dev/null || true; \
+		docker exec clickhouse-local clickhouse-client --query "TRUNCATE TABLE IF EXISTS transactions" 2>/dev/null || true; \
+		docker exec clickhouse-local clickhouse-client --query "TRUNCATE TABLE IF EXISTS interactions" 2>/dev/null || true; \
+		echo "$(GREEN)ClickHouse data cleaned!$(NC)"; \
+	else \
+		echo "$(RED)ClickHouse container not running$(NC)"; \
+	fi
+	@if [ -d "data" ]; then \
+		echo "Removing local data files..."; \
+		rm -rf data/*; \
+		echo "$(GREEN)Local data files removed!$(NC)"; \
+	fi

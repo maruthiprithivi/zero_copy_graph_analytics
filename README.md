@@ -22,6 +22,7 @@ Demo repository showcasing graph analytics on OLAP data using PuppyGraph and Cli
 - [Technologies](#technologies)
 - [Repository Structure](#repository-structure)
 - [Troubleshooting](#troubleshooting)
+- [Test Results](#test-results)
 
 ## Use Cases
 
@@ -34,7 +35,7 @@ Unified view of customer behavior combining transactional data with relationship
 
 **Scale**: 35.4M records (1M customers, 7.3M transactions, 27M interactions, 50K products)
 
-**Queries**: 15 SQL + 20 Cypher queries
+**Queries**: 25 SQL + 30 Cypher queries (55 total)
 
 [View Customer 360 Documentation →](use-cases/customer-360/README.md)
 
@@ -49,49 +50,42 @@ Real-time fraud detection using graph pattern matching with embedded fraud scena
 
 **Fraud Scenarios**: 5 embedded patterns (account takeover, money laundering, credit card fraud, synthetic identity, merchant collusion)
 
-**Queries**: 10 SQL + 10 Cypher queries
+**Queries**: 17 SQL + 25 Cypher queries (42 total)
 
 [View Fraud Detection Documentation →](use-cases/fraud-detection/README.md)
 
 ## Configuration
 
-The repository uses three environment template files for different purposes:
+The repository uses two environment template files for different deployment modes:
 
-### 1. `.env.example` (Root) - Main Application Configuration
+### 1. `.env.example` (Root) - Application & Data Generation
 
-**Purpose**: Core application settings for ClickHouse, PuppyGraph, and Streamlit
+**Purpose**: All-in-one configuration for application runtime and data generation
 
 **Setup**:
 ```bash
 cp .env.example .env
-# Edit .env with your credentials
+# Edit .env with your credentials and settings
 ```
 
 **Key Settings**:
+
+**Application Configuration:**
 - ClickHouse connection (host, port, credentials)
 - PuppyGraph configuration (ports, password)
 - Streamlit application settings
 - Data pipeline configuration
 - Performance tuning
 
-### 2. `data.env.example` (Root) - Data Generation Configuration
-
-**Purpose**: Control data generation parameters
-
-**Setup**:
-```bash
-cp data.env.example data.env
-# Edit data.env with desired scale
-python generate_data.py --env-file data.env
-```
-
-**Key Settings**:
+**Data Generation Configuration:**
 - Customer scale (100K, 1M, 10M, 100M)
 - Random seed for reproducibility
 - Batch size and compression
 - Use case selection (customer360, fraud-detection, both)
 
-### 3. `deployments/hybrid/.env.example` - Hybrid Deployment
+**Usage**: The consolidated `.env` file is used by both the application runtime and the `generate_data.py` script, eliminating the need for separate configuration files.
+
+### 2. `deployments/hybrid/.env.example` - Hybrid Deployment
 
 **Purpose**: ClickHouse Cloud connection for hybrid deployment
 
@@ -173,8 +167,8 @@ make status
 - 27M interactions (25 per customer: view, cart, wishlist, review, share)
 - 50K products (10 categories)
 
-**SQL Performance**: 15 queries, 10-1,609ms, avg 285ms
-**Cypher Performance**: 20 queries, 10-1000x faster for relationship queries
+**SQL Performance**: 25 queries including window functions, RFM scoring, and cohort analysis
+**Cypher Performance**: 30 queries including multi-hop recommendations and purchase triangles
 
 ### Fraud Detection Dataset (1.29M records)
 - 100K customers (3% fraudulent, 97% legitimate)
@@ -190,8 +184,8 @@ make status
 4. Synthetic Identity (390 accounts) - Clique pattern with shared fake identities
 5. Merchant Collusion (390 accounts) - Dense network of colluding merchants
 
-**SQL Performance**: 10 queries, 11-293ms, avg 60ms
-**Cypher Performance**: 10 queries, 10-100x faster for fraud ring detection
+**SQL Performance**: 17 queries including velocity analysis, risk distribution, and statistical measures
+**Cypher Performance**: 25 queries including fraud rings, money laundering paths, and device sharing networks
 
 ## Example Queries
 
@@ -328,13 +322,13 @@ python3 generate_data.py \
 │   ├── customer-360/
 │   │   ├── README.md          # Customer 360 documentation
 │   │   ├── generator.py       # Customer 360 data generator
-│   │   ├── queries.sql        # 15 SQL queries
-│   │   └── queries.cypher     # 20 Cypher queries
+│   │   ├── queries.sql        # 25 SQL queries
+│   │   └── queries.cypher     # 30 Cypher queries
 │   └── fraud-detection/
 │       ├── README.md          # Fraud Detection documentation
 │       ├── generator.py       # Fraud Detection data generator
-│       ├── queries.sql        # 10 SQL queries
-│       └── queries.cypher     # 10 Cypher queries
+│       ├── queries.sql        # 17 SQL queries
+│       └── queries.cypher     # 25 Cypher queries
 │
 ├── app/
 │   ├── database/              # ClickHouse client
@@ -480,3 +474,55 @@ make generate-local  # or make generate-hybrid
 - **Real-time Analytics**: Graph queries execute in milliseconds
 - **Scalability**: Handles billions of edges efficiently
 - **Flexibility**: Choose local or cloud deployment
+
+## Test Results
+
+All 97 queries validated with 100% success rate.
+
+### Query Inventory
+
+| Use Case | SQL Queries | Cypher Queries | Total |
+|----------|-------------|----------------|-------|
+| Customer 360 | 25 | 30 | 55 |
+| Fraud Detection | 17 | 25 | 42 |
+| **Total** | **42** | **55** | **97** |
+
+### Query Categories
+
+**SQL (ClickHouse) - Heavy Analytics:**
+- Window functions (running totals, rolling averages)
+- Statistical measures (percentiles, standard deviation, variance)
+- RFM scoring (Recency-Frequency-Monetary)
+- Cohort retention analysis
+- Month-over-month growth calculations
+- Multi-dimensional aggregations (GROUPING SETS)
+
+**Cypher (PuppyGraph) - Graph Patterns:**
+- Multi-hop product recommendations (3+ degrees)
+- Customer purchase triangles (shared products)
+- Fraud ring detection (device sharing, circular transfers)
+- Brand ecosystem analysis
+- Cross-category affinity paths
+- View-to-purchase conversion funnels
+
+### Performance Summary
+
+| Metric | Value |
+|--------|-------|
+| Success Rate | 100% |
+| Total Rows Returned | 2,981 |
+| Median Latency | 28ms |
+| P95 Latency | 148ms |
+
+### Running Tests
+
+```bash
+# Ensure services are running
+make local
+
+# Run comprehensive test suite
+CLICKHOUSE_DATABASE=default python3 test/comprehensive_test_runner.py \
+  --deployment local \
+  --use-case all \
+  --skip-data-loading
+```

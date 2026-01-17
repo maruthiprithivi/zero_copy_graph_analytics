@@ -1,650 +1,382 @@
 {
-  "description": "Customer 360 Graph Schema for PuppyGraph with ClickHouse Cloud",
-  "version": "1.0.0",
-  "created": "2025-01-01",
   "catalogs": [
     {
-      "name": "clickhouse_catalog",
+      "name": "ch",
       "type": "clickhouse",
-      "description": "Connection to ClickHouse Cloud for Customer 360 data",
       "jdbc": {
-        "url": "jdbc:clickhouse://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/${CLICKHOUSE_DATABASE}?ssl=true&sslmode=strict",
-        "username": "${CLICKHOUSE_USER}",
-        "password": "${CLICKHOUSE_PASSWORD}",
-        "driverClassName": "com.clickhouse.jdbc.ClickHouseDriver",
-        "connectionProperties": {
-          "ssl": "true",
-          "sslmode": "strict",
-          "compress": "true",
-          "decompress": "true",
-          "connection_timeout": "30000",
-          "socket_timeout": "300000",
-          "max_execution_time": "300",
-          "use_server_time_zone": "false",
-          "use_time_zone": "UTC"
-        }
-      },
-      "connectionPool": {
-        "initialSize": 5,
-        "maxActive": 20,
-        "maxIdle": 10,
-        "minIdle": 2,
-        "maxWaitMillis": 30000,
-        "testOnBorrow": true,
-        "testWhileIdle": true,
-        "validationQuery": "SELECT 1"
+        "jdbcUri": "jdbc:ch://clickhouse:8123/default",
+        "username": "default",
+        "password": "clickhouse123",
+        "driverClass": "com.clickhouse.jdbc.ClickHouseDriver"
       }
     }
   ],
   "graph": {
-    "name": "customer360_graph",
-    "description": "Comprehensive customer 360 graph with relationships and interactions",
     "vertices": [
       {
         "label": "Customer",
-        "description": "Customer entities with profile information and segmentation",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "customers",
-          "metaFields": {
-            "id": "customer_id"
-          }
-        },
-        "properties": {
-          "email": {
-            "column": "email",
-            "type": "STRING",
-            "description": "Customer email address"
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "customers"
           },
-          "name": {
-            "column": "name", 
-            "type": "STRING",
-            "description": "Customer full name"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "customer_id", "alias": "id"}
+            ]
           },
-          "segment": {
-            "column": "segment",
-            "type": "STRING", 
-            "description": "Customer segment (VIP, Premium, Regular, Basic, New)"
-          },
-          "ltv": {
-            "column": "ltv",
-            "type": "DOUBLE",
-            "description": "Customer lifetime value"
-          },
-          "registration_date": {
-            "column": "registration_date",
-            "type": "DATE",
-            "description": "Date when customer registered"
-          },
-          "created_at": {
-            "column": "created_at",
-            "type": "TIMESTAMP",
-            "description": "Record creation timestamp"
-          }
-        },
-        "indexes": [
-          {
-            "name": "customer_email_idx",
-            "columns": ["email"],
-            "unique": true
-          },
-          {
-            "name": "customer_segment_idx", 
-            "columns": ["segment"]
-          }
-        ]
+          "attributes": [
+            {"type": "String", "field": "email", "alias": "email"},
+            {"type": "String", "field": "name", "alias": "name"},
+            {"type": "String", "field": "segment", "alias": "segment"}
+          ]
+        }
       },
       {
         "label": "Product",
-        "description": "Product catalog with pricing and categorization",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "products",
-          "metaFields": {
-            "id": "product_id"
-          }
-        },
-        "properties": {
-          "name": {
-            "column": "name",
-            "type": "STRING",
-            "description": "Product name"
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "products"
           },
-          "category": {
-            "column": "category",
-            "type": "STRING",
-            "description": "Product category"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "product_id", "alias": "id"}
+            ]
           },
-          "subcategory": {
-            "column": "subcategory",
-            "type": "STRING", 
-            "description": "Product subcategory"
-          },
-          "brand": {
-            "column": "brand",
-            "type": "STRING",
-            "description": "Product brand"
-          },
-          "price": {
-            "column": "price",
-            "type": "DOUBLE",
-            "description": "Product price"
-          },
-          "launch_date": {
-            "column": "launch_date",
-            "type": "DATE",
-            "description": "Product launch date"
-          }
-        },
-        "indexes": [
-          {
-            "name": "product_category_idx",
-            "columns": ["category", "subcategory"]
-          },
-          {
-            "name": "product_brand_idx",
-            "columns": ["brand"]
-          }
-        ]
+          "attributes": [
+            {"type": "String", "field": "name", "alias": "name"},
+            {"type": "String", "field": "category", "alias": "category"},
+            {"type": "String", "field": "brand", "alias": "brand"}
+          ]
+        }
       },
       {
-        "label": "Transaction",
-        "description": "Individual transaction records for detailed analysis",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default", 
-          "table": "transactions",
-          "metaFields": {
-            "id": "transaction_id"
-          }
-        },
-        "properties": {
-          "amount": {
-            "column": "amount",
-            "type": "DOUBLE",
-            "description": "Transaction amount"
+        "label": "FraudCustomer",
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "fraud_customers"
           },
-          "quantity": {
-            "column": "quantity",
-            "type": "INTEGER",
-            "description": "Quantity purchased"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "customer_id", "alias": "id"}
+            ]
           },
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP", 
-            "description": "Transaction timestamp"
-          },
-          "channel": {
-            "column": "channel",
-            "type": "STRING",
-            "description": "Sales channel (web, mobile, store, etc.)"
-          },
-          "status": {
-            "column": "status",
-            "type": "STRING",
-            "description": "Transaction status (completed, cancelled, refunded)"
-          }
-        },
-        "indexes": [
-          {
-            "name": "transaction_timestamp_idx",
-            "columns": ["timestamp"]
-          },
-          {
-            "name": "transaction_channel_idx",
-            "columns": ["channel"]
-          }
-        ]
+          "attributes": [
+            {"type": "String", "field": "name", "alias": "name"},
+            {"type": "String", "field": "email", "alias": "email"},
+            {"type": "Double", "field": "risk_score", "alias": "risk_score"},
+            {"type": "String", "field": "status", "alias": "status"},
+            {"type": "Short", "field": "is_fraudulent", "alias": "is_fraudulent"}
+          ]
+        }
       },
       {
-        "label": "Interaction",
-        "description": "Customer interaction events (views, clicks, searches)",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "interactions", 
-          "metaFields": {
-            "id": "interaction_id"
-          }
-        },
-        "properties": {
-          "type": {
-            "column": "type",
-            "type": "STRING",
-            "description": "Interaction type (view, click, search, cart_add, wishlist)"
+        "label": "FraudAccount",
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "fraud_accounts"
           },
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "Interaction timestamp"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "account_id", "alias": "id"}
+            ]
           },
-          "duration": {
-            "column": "duration",
-            "type": "INTEGER",
-            "description": "Duration of interaction in seconds"
-          },
-          "device": {
-            "column": "device",
-            "type": "STRING",
-            "description": "Device type (desktop, mobile, tablet)"
-          },
-          "session_id": {
-            "column": "session_id",
-            "type": "STRING",
-            "description": "User session identifier"
-          }
-        },
-        "indexes": [
-          {
-            "name": "interaction_type_idx",
-            "columns": ["type"]
-          },
-          {
-            "name": "interaction_timestamp_idx", 
-            "columns": ["timestamp"]
-          }
-        ]
+          "attributes": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"},
+            {"type": "String", "field": "account_type", "alias": "account_type"},
+            {"type": "Double", "field": "balance", "alias": "balance"},
+            {"type": "String", "field": "status", "alias": "status"},
+            {"type": "Short", "field": "is_fraudulent", "alias": "is_fraudulent"}
+          ]
+        }
       },
       {
-        "label": "SupportTicket",
-        "description": "Customer support tickets and issues",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "support_tickets",
-          "metaFields": {
-            "id": "ticket_id"
-          }
-        },
-        "properties": {
-          "issue_type": {
-            "column": "issue_type", 
-            "type": "STRING",
-            "description": "Type of support issue"
+        "label": "FraudDevice",
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "fraud_devices"
           },
-          "priority": {
-            "column": "priority",
-            "type": "STRING",
-            "description": "Ticket priority (low, medium, high, critical)"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "device_id", "alias": "id"}
+            ]
           },
-          "status": {
-            "column": "status",
-            "type": "STRING",
-            "description": "Ticket status (open, in_progress, resolved, closed)"
+          "attributes": [
+            {"type": "String", "field": "device_fingerprint", "alias": "device_fingerprint"},
+            {"type": "String", "field": "device_type", "alias": "device_type"},
+            {"type": "String", "field": "ip_address", "alias": "ip_address"},
+            {"type": "String", "field": "location", "alias": "location"},
+            {"type": "Short", "field": "is_suspicious", "alias": "is_suspicious"}
+          ]
+        }
+      },
+      {
+        "label": "FraudMerchant",
+        "oneToOne": {
+          "tableSource": {
+            "catalog": "ch",
+            "schema": "default",
+            "table": "fraud_merchants"
           },
-          "created_at": {
-            "column": "created_at",
-            "type": "TIMESTAMP",
-            "description": "Ticket creation time"
+          "id": {
+            "fields": [
+              {"type": "String", "field": "merchant_id", "alias": "id"}
+            ]
           },
-          "resolved_at": {
-            "column": "resolved_at",
-            "type": "TIMESTAMP",
-            "description": "Ticket resolution time"
-          },
-          "satisfaction_score": {
-            "column": "satisfaction_score",
-            "type": "INTEGER",
-            "description": "Customer satisfaction score (1-5)"
-          }
-        },
-        "indexes": [
-          {
-            "name": "ticket_status_idx",
-            "columns": ["status"]
-          },
-          {
-            "name": "ticket_priority_idx",
-            "columns": ["priority"]
-          }
-        ]
+          "attributes": [
+            {"type": "String", "field": "merchant_name", "alias": "merchant_name"},
+            {"type": "String", "field": "category", "alias": "category"},
+            {"type": "Double", "field": "risk_score", "alias": "risk_score"},
+            {"type": "Short", "field": "is_fraudulent", "alias": "is_fraudulent"}
+          ]
+        }
       }
     ],
     "edges": [
       {
         "label": "PURCHASED",
-        "description": "Customer purchased a product",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "fromVertex": "Customer",
+        "toVertex": "Product",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "transactions",
-          "metaFields": {
-            "id": "transaction_id",
-            "from": "customer_id",
-            "to": "product_id"
-          },
-          "predicate": "status = 'completed'"
+          "table": "transactions"
         },
-        "properties": {
-          "amount": {
-            "column": "amount",
-            "type": "DOUBLE",
-            "description": "Purchase amount"
-          },
-          "quantity": {
-            "column": "quantity", 
-            "type": "INTEGER",
-            "description": "Quantity purchased"
-          },
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "Purchase timestamp"
-          },
-          "channel": {
-            "column": "channel",
-            "type": "STRING",
-            "description": "Purchase channel"
-          }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "transaction_id", "alias": "id"}
+          ]
         },
-        "indexes": [
-          {
-            "name": "purchased_timestamp_idx",
-            "columns": ["timestamp"]
-          }
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "product_id", "alias": "product_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "String", "field": "channel", "alias": "channel"},
+          {"type": "String", "field": "status", "alias": "status"}
         ]
       },
       {
         "label": "VIEWED",
-        "description": "Customer viewed a product",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "fromVertex": "Customer",
+        "toVertex": "Product",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "interactions",
-          "metaFields": {
-            "id": "interaction_id",
-            "from": "customer_id", 
-            "to": "product_id"
-          },
-          "predicate": "type = 'view' AND product_id IS NOT NULL"
+          "table": "interactions_view"
         },
-        "properties": {
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "View timestamp"
-          },
-          "duration": {
-            "column": "duration",
-            "type": "INTEGER",
-            "description": "View duration in seconds"
-          },
-          "device": {
-            "column": "device",
-            "type": "STRING",
-            "description": "Device used for viewing"
-          },
-          "session_id": {
-            "column": "session_id",
-            "type": "STRING",
-            "description": "Session identifier"
-          }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "interaction_id", "alias": "id"}
+          ]
         },
-        "indexes": [
-          {
-            "name": "viewed_timestamp_idx",
-            "columns": ["timestamp"]
-          }
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "product_id", "alias": "product_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "DateTime", "field": "timestamp", "alias": "timestamp"},
+          {"type": "String", "field": "device", "alias": "device"},
+          {"type": "String", "field": "session_id", "alias": "session_id"}
         ]
       },
       {
         "label": "CLICKED",
-        "description": "Customer clicked on a product",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "fromVertex": "Customer",
+        "toVertex": "Product",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "interactions",
-          "metaFields": {
-            "id": "interaction_id",
-            "from": "customer_id",
-            "to": "product_id"
-          },
-          "predicate": "type = 'click' AND product_id IS NOT NULL"
+          "table": "interactions_click"
         },
-        "properties": {
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "Click timestamp"
-          },
-          "device": {
-            "column": "device",
-            "type": "STRING",
-            "description": "Device used for clicking"
-          },
-          "session_id": {
-            "column": "session_id",
-            "type": "STRING",
-            "description": "Session identifier"
-          }
-        }
-      },
-      {
-        "label": "ADDED_TO_CART",
-        "description": "Customer added product to cart",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "interactions",
-          "metaFields": {
-            "id": "interaction_id",
-            "from": "customer_id",
-            "to": "product_id"
-          },
-          "predicate": "type = 'cart_add' AND product_id IS NOT NULL"
+        "id": {
+          "fields": [
+            {"type": "String", "field": "interaction_id", "alias": "id"}
+          ]
         },
-        "properties": {
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "Cart add timestamp"
-          },
-          "device": {
-            "column": "device", 
-            "type": "STRING",
-            "description": "Device used"
-          }
-        }
-      },
-      {
-        "label": "WISHLISTED",
-        "description": "Customer added product to wishlist",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "interactions",
-          "metaFields": {
-            "id": "interaction_id",
-            "from": "customer_id",
-            "to": "product_id"
-          },
-          "predicate": "type = 'wishlist' AND product_id IS NOT NULL"
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"}
+          ]
         },
-        "properties": {
-          "timestamp": {
-            "column": "timestamp",
-            "type": "TIMESTAMP",
-            "description": "Wishlist add timestamp"
-          }
-        }
-      },
-      {
-        "label": "KNOWS",
-        "description": "Customer relationship (referrals, social connections)",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
-          "schema": "default",
-          "table": "customer_relationships",
-          "metaFields": {
-            "id": "CONCAT(from_customer_id, '_', to_customer_id)",
-            "from": "from_customer_id",
-            "to": "to_customer_id"
-          }
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "product_id", "alias": "product_id"}
+          ]
         },
-        "properties": {
-          "relationship_type": {
-            "column": "relationship_type",
-            "type": "STRING",
-            "description": "Type of relationship (friend, family, colleague, referral)"
-          },
-          "since": {
-            "column": "since",
-            "type": "DATE",
-            "description": "Relationship established date"
-          },
-          "strength": {
-            "column": "strength",
-            "type": "DOUBLE",
-            "description": "Relationship strength score (0.0-1.0)"
-          }
-        },
-        "indexes": [
-          {
-            "name": "knows_relationship_type_idx",
-            "columns": ["relationship_type"]
-          }
+        "attributes": [
+          {"type": "DateTime", "field": "timestamp", "alias": "timestamp"},
+          {"type": "String", "field": "device", "alias": "device"}
         ]
       },
       {
-        "label": "SIMILAR_TO",
-        "description": "Computed customer similarity based on behavior",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "label": "ADDED_TO_CART",
+        "fromVertex": "Customer",
+        "toVertex": "Product",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "customer_similarities",
-          "metaFields": {
-            "id": "CONCAT(customer_id_1, '_', customer_id_2)",
-            "from": "customer_id_1",
-            "to": "customer_id_2"
-          }
+          "table": "interactions_cart"
         },
-        "properties": {
-          "similarity_score": {
-            "column": "similarity_score",
-            "type": "DOUBLE",
-            "description": "Similarity score (0.0-1.0)"
-          },
-          "similarity_type": {
-            "column": "similarity_type",
-            "type": "STRING",
-            "description": "Type of similarity (behavioral, demographic, purchase_pattern)"
-          },
-          "computed_at": {
-            "column": "computed_at",
-            "type": "TIMESTAMP",
-            "description": "When similarity was computed"
-          }
-        }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "interaction_id", "alias": "id"}
+          ]
+        },
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "product_id", "alias": "product_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "DateTime", "field": "timestamp", "alias": "timestamp"},
+          {"type": "String", "field": "device", "alias": "device"}
+        ]
       },
       {
-        "label": "RELATED_TO",
-        "description": "Product relationships (frequently bought together, alternatives)",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "label": "OWNS_ACCOUNT",
+        "fromVertex": "FraudCustomer",
+        "toVertex": "FraudAccount",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "product_relationships",
-          "metaFields": {
-            "id": "CONCAT(product_id_1, '_', product_id_2)",
-            "from": "product_id_1",
-            "to": "product_id_2"
-          }
+          "table": "fraud_accounts"
         },
-        "properties": {
-          "relationship_type": {
-            "column": "relationship_type",
-            "type": "STRING",
-            "description": "Type of relationship (frequently_bought_together, alternative, complement, upgrade)"
-          },
-          "strength": {
-            "column": "strength",
-            "type": "DOUBLE",
-            "description": "Relationship strength score"
-          },
-          "support": {
-            "column": "support",
-            "type": "DOUBLE", 
-            "description": "Statistical support for the relationship"
-          },
-          "confidence": {
-            "column": "confidence",
-            "type": "DOUBLE",
-            "description": "Statistical confidence for the relationship"
-          }
-        }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "account_id", "alias": "id"}
+          ]
+        },
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "customer_id", "alias": "customer_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "account_id", "alias": "account_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "String", "field": "account_type", "alias": "account_type"},
+          {"type": "String", "field": "status", "alias": "status"}
+        ]
       },
       {
-        "label": "CONTACTED_SUPPORT",
-        "description": "Customer contacted support",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "label": "FRAUD_TRANSACTION",
+        "fromVertex": "FraudAccount",
+        "toVertex": "FraudAccount",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "support_tickets",
-          "metaFields": {
-            "id": "ticket_id",
-            "from": "customer_id",
-            "to": "ticket_id"
-          }
+          "table": "fraud_transactions"
         },
-        "properties": {
-          "created_at": {
-            "column": "created_at",
-            "type": "TIMESTAMP",
-            "description": "When support was contacted"
-          },
-          "issue_type": {
-            "column": "issue_type",
-            "type": "STRING",
-            "description": "Type of support issue"
-          },
-          "priority": {
-            "column": "priority",
-            "type": "STRING",
-            "description": "Issue priority"
-          }
-        }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "transaction_id", "alias": "id"}
+          ]
+        },
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "from_account_id", "alias": "from_account_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "to_account_id", "alias": "to_account_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "String", "field": "transaction_type", "alias": "transaction_type"},
+          {"type": "Double", "field": "risk_score", "alias": "risk_score"},
+          {"type": "Short", "field": "is_flagged", "alias": "is_flagged"},
+          {"type": "Short", "field": "is_fraudulent", "alias": "is_fraudulent"}
+        ]
       },
       {
-        "label": "SUPPORT_FOR_PRODUCT",
-        "description": "Support ticket related to specific product",
-        "mappedTableSource": {
-          "catalog": "clickhouse_catalog",
+        "label": "USED_DEVICE",
+        "fromVertex": "FraudAccount",
+        "toVertex": "FraudDevice",
+        "tableSource": {
+          "catalog": "ch",
           "schema": "default",
-          "table": "support_tickets",
-          "metaFields": {
-            "id": "CONCAT(ticket_id, '_', related_product_id)",
-            "from": "ticket_id", 
-            "to": "related_product_id"
-          },
-          "predicate": "related_product_id IS NOT NULL"
+          "table": "fraud_transactions"
         },
-        "properties": {
-          "issue_type": {
-            "column": "issue_type",
-            "type": "STRING",
-            "description": "Type of product-related issue"
-          }
-        }
+        "id": {
+          "fields": [
+            {"type": "String", "field": "transaction_id", "alias": "id"}
+          ]
+        },
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "from_account_id", "alias": "from_account_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "device_id", "alias": "device_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "DateTime", "field": "timestamp", "alias": "timestamp"},
+          {"type": "String", "field": "ip_address", "alias": "ip_address"}
+        ]
+      },
+      {
+        "label": "PAID_MERCHANT",
+        "fromVertex": "FraudAccount",
+        "toVertex": "FraudMerchant",
+        "tableSource": {
+          "catalog": "ch",
+          "schema": "default",
+          "table": "fraud_transactions"
+        },
+        "id": {
+          "fields": [
+            {"type": "String", "field": "transaction_id", "alias": "id"}
+          ]
+        },
+        "fromId": {
+          "fields": [
+            {"type": "String", "field": "from_account_id", "alias": "from_account_id"}
+          ]
+        },
+        "toId": {
+          "fields": [
+            {"type": "String", "field": "merchant_id", "alias": "merchant_id"}
+          ]
+        },
+        "attributes": [
+          {"type": "Double", "field": "amount", "alias": "amount"},
+          {"type": "DateTime", "field": "timestamp", "alias": "timestamp"}
+        ]
       }
-    ],
-    "queryOptimization": {
-      "enableIndexHints": true,
-      "enableStatistics": true,
-      "defaultQueryTimeout": 300,
-      "maxResultSize": 1000000,
-      "enableParallelExecution": true,
-      "cacheQueryPlans": true
-    },
-    "monitoring": {
-      "enableQueryMetrics": true,
-      "slowQueryThreshold": 5000,
-      "enablePerformanceLogs": true
-    }
-  },
-  "security": {
-    "enableRowLevelSecurity": false,
-    "enableColumnLevelSecurity": false,
-    "auditLogging": true
+    ]
   }
 }

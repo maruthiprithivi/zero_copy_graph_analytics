@@ -10,11 +10,11 @@ Usage:
   # Using command-line parameters
   python generate_data.py --customers 1000000 --use-case customer360
 
-  # Using a data config file
-  python generate_data.py --env-file data.env
+  # Using environment file
+  python generate_data.py --env-file .env
 
   # Combining both (CLI params override env vars)
-  python generate_data.py --env-file data.env --customers 500000
+  python generate_data.py --env-file .env --customers 500000
 """
 
 import os
@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 @click.command()
 @click.option('--env-file',
               type=click.Path(exists=True),
-              help='Path to environment file with configuration (e.g., data.env)')
+              help='Path to environment file with configuration (e.g., .env)')
 @click.option('--customers',
               type=int,
               help='Number of customers to generate (overrides CUSTOMER_SCALE env var)')
@@ -54,7 +54,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 @click.option('--verbose',
               is_flag=True,
               help='Enable verbose debug logging')
-def generate(env_file, customers, seed, batch_size, output_dir, compression, use_case, overwrite, verbose):
+@click.option('--include-seeds/--no-seeds',
+              default=True,
+              help='Include seed data for guaranteed query results (default: enabled)')
+def generate(env_file, customers, seed, batch_size, output_dir, compression, use_case, overwrite, verbose, include_seeds):
     """
     Generate realistic data for Customer 360 and Fraud Detection use cases.
 
@@ -108,6 +111,7 @@ def generate(env_file, customers, seed, batch_size, output_dir, compression, use
     click.echo(f"  Compression: {os.getenv('PARQUET_COMPRESSION', 'snappy')}")
     click.echo(f"  Use case: {use_case}")
     click.echo(f"  Overwrite: {os.getenv('OVERWRITE_EXISTING_DATA', 'false')}")
+    click.echo(f"  Include seeds: {include_seeds}")
     click.echo(f"  Verbose: {os.getenv('VERBOSE_LOGGING', 'false')}")
     click.echo()
 
@@ -117,11 +121,13 @@ def generate(env_file, customers, seed, batch_size, output_dir, compression, use
 
         if os.getenv('GENERATE_CUSTOMER_360', 'true').lower() == 'true':
             click.echo("Generating Customer 360 data...")
+            if include_seeds:
+                click.echo("  (including seed data for guaranteed query results)")
             # Import customer 360 generator
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'use-cases', 'customer-360'))
             from generator import Customer360Generator
             generator = Customer360Generator()
-            data = generator.generate_all()
+            data = generator.generate_all(include_seeds=include_seeds)
             generated_data.append(('customer360', data))
             click.echo("Customer 360 data generation complete!\n")
 
@@ -155,33 +161,30 @@ def generate(env_file, customers, seed, batch_size, output_dir, compression, use
             click.echo("Ingesting data into ClickHouse...")
             try:
                 from app.database.clickhouse import ClickHouseClient
-                import clickhouse_connect
 
-                # Test connection first
-                try:
-                    client_test = clickhouse_connect.get_client(
-                        host=os.getenv('CLICKHOUSE_HOST', 'localhost'),
-                        port=int(os.getenv('CLICKHOUSE_PORT', '8123')),
-                        username=os.getenv('CLICKHOUSE_USER', 'default'),
-                        password=os.getenv('CLICKHOUSE_PASSWORD', '')
-                    )
-                    client_test.query("SELECT 1")
-                    click.echo("ClickHouse connection established successfully")
-                except Exception as conn_error:
-                    click.echo(f"Warning: Could not connect to ClickHouse: {conn_error}", err=True)
-                    click.echo("Data has been generated and saved to files, but not ingested into database.")
-                    sys.exit(0)
-
-                # Ingest the data
+                # Ingest the data (ClickHouseClient will handle connection and errors)
+                click.echo("Connecting to ClickHouse...")
                 client = ClickHouseClient()
+                click.echo("ClickHouse connection established successfully")
                 click.echo("Creating tables if not exist...")
                 client.create_tables()
 
                 for use_case, data in generated_data:
                     click.echo(f"\nIngesting {use_case} data...")
                     for table_name, df in data.items():
-                        click.echo(f"  Ingesting {table_name}: {len(df):,} records...")
-                        client.insert_dataframe(table_name, df)
+                        # Fraud detection tables need 'fraud_' prefix
+                        if use_case == 'fraud_detection':
+                            # Core tables need fraud_ prefix
+                            core_tables = ['customers', 'accounts', 'devices', 'merchants', 'transactions']
+                            if table_name in core_tables:
+                                actual_table = f"fraud_{table_name}"
+                            else:
+                                # Scenario tables like account_takeover_device_account_usage stay as-is
+                                actual_table = table_name
+                        else:
+                            actual_table = table_name
+                        click.echo(f"  Ingesting {actual_table}: {len(df):,} records...")
+                        client.insert_dataframe(actual_table, df)
 
                 click.echo("\nData ingestion complete!")
                 click.echo("You can now query the data using ClickHouse or PuppyGraph")
